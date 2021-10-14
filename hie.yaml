@@ -1,0 +1,7 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "hnutmeg:lib"
+
+    - path: "./test"
+      component: "hnutmeg:test:hnutmeg-test"

@@ -1,0 +1,64 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           hnutmeg
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/augustunderground/hnutmeg#readme>
+homepage:       https://github.com/augustunderground/hnutmeg#readme
+bug-reports:    https://github.com/augustunderground/hnutmeg/issues
+author:         Yannick Uhlmann
+maintainer:     augustunderground@protonmail.com
+copyright:      2021 Yannick Uhlmann
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/augustunderground/hnutmeg
+
+library
+  exposed-modules:
+      Data.NutMeg
+  other-modules:
+      Paths_hnutmeg
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , binary
+    , bytestring
+    , containers
+    , matrices
+    , split
+    , vector
+    , vector-binary-instances
+  default-language: Haskell2010
+
+test-suite hnutmeg-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_hnutmeg
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , binary
+    , bytestring
+    , containers
+    , hnutmeg
+    , hvega
+    , matrices
+    , split
+    , text
+    , vector
+    , vector-binary-instances
+  default-language: Haskell2010

@@ -1,0 +1,6 @@
+.stack-work/
+*~
+example/*.svg
+example/*.html
+*.lock
+*.log
