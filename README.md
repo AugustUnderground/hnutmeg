@@ -12,6 +12,6 @@ $ stack test
 
 should produce something like the following plot in `./example`.
 
-![./example/nutbin.svg]()
+![](./example/nutbin.svg)
 
-![./example/nutmos.svg]()
+![](./example/nutmos.svg)
