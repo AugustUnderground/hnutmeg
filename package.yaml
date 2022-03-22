@@ -28,6 +28,8 @@ dependencies:
 - split
 - vector
 - matrices
+- hmatrix
+- hmatrix-csv
   #- binary-strict
 
 library:

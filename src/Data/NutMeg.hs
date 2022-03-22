@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wall #-}
+
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -21,26 +23,19 @@ module Data.NutMeg
     , parseNutPlot
     , parseNutMeg
     , readNutRaw
+    -- , encodeNutPlot
     ) where
 
-import qualified Data.Map.Strict as M
-import qualified Data.List as L
--- import qualified Data.Vector.Storable as V
--- import qualified Data.Matrix.Storable as A
-import qualified Data.Vector.Unboxed as V
-import qualified Data.Matrix.Unboxed as A
-import qualified Data.ByteString as BS
+import           Data.Maybe
+import           Data.Int
+import           Data.Complex
+import           Data.Binary.Get
+import qualified Data.Map.Strict       as M
+import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as CS
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as CL
-import Data.Maybe
-import Data.Word
-import Data.Int
-import Data.Complex
-import Data.Binary
-import Data.Vector.Binary
-import Data.Binary.Get
-import Data.List.Split
+import qualified Data.ByteString.Lazy  as BL
+import qualified Data.Vector.Unboxed   as V
+import qualified Data.Matrix.Unboxed   as A
 
 -- | NutMeg wave form data dypes
 data NutWave = NutRealWave    {-# UNPACK #-} !(V.Vector Double)
@@ -97,12 +92,12 @@ joinComplexWaves a b = concatComplexWaves [a, b]
 
 flattenComplexPlots :: [NutPlot] -> NutPlot
 flattenComplexPlots nps = let { nutPlotName  = pn'
-                           ; nutNumVars   = nv'
-                           ; nutNumPoints = np'
-                           ; nutVariables = vn'
-                           ; nutPlotType  = pt'
-                           ; nutData      = dt'
-                           } in NutPlot { .. }
+                              ; nutNumVars   = nv'
+                              ; nutNumPoints = np'
+                              ; nutVariables = vn'
+                              ; nutPlotType  = pt'
+                              ; nutData      = dt'
+                              } in NutPlot { .. }
   where fp = head nps
         pn' = nutPlotName fp
         nv' = nutNumVars fp
@@ -193,8 +188,8 @@ readNutRaw = BS.readFile
 
 -- | Reads a line from a list of ByteStrings, that starts with a given prefix.
 readNutElement' :: BS.ByteString -> [BS.ByteString] -> Maybe String
-readNutElement' eid bs = CS.unpack . CS.strip <$> elem bs
-    where elem = CS.stripPrefix eid . head . filter (BS.isPrefixOf eid)
+readNutElement' eid bs = CS.unpack . CS.strip <$> elem' bs
+    where elem' = CS.stripPrefix eid . head . filter (BS.isPrefixOf eid)
 
 -- | Takes a `NutField` name and returns the correspinding value.
 readNutElement :: NutField -> BS.ByteString -> String
@@ -253,11 +248,12 @@ nutPlot pn nt np nv vn bs
                else map NutComplexWave . A.toColumns . A.fromRows 
                                        $ [rc (j * nv) | j <- [ 0 .. (np - 1) ]]
 
+-- | Get the first NutMeg Element and the Rest
 popNutElement :: NutField -> BS.ByteString -> (Maybe BS.ByteString, BS.ByteString)
-popNutElement field dat = (elem, rest)
+popNutElement field dat = (elem'', rest)
     where nextField = succ field
           (elem', rest) = BS.breakSubstring (nutFieldName nextField) dat
-          elem          = CS.strip <$> BS.stripPrefix (nutFieldName field) elem'
+          elem''        = CS.strip <$> BS.stripPrefix (nutFieldName field) elem'
 
 -- | Extract NutMeg header information
 parseNutHeader :: BS.ByteString -> [String]
@@ -291,6 +287,7 @@ parseNutPlot plt = nutPlot pn fl np nv vn dt
       vn         = map (CS.unpack . (!!1) . CS.words) $ CS.lines vr
       dt         = BL.fromStrict . fromJust . BS.stripPrefix "Binary:\n" $ dat
 
+-- | Split a nut String at BS.null s
 splitNutString :: BS.ByteString -> [NutPlot] -> [NutPlot]
 splitNutString bs bl | BS.null bs = bl
                      | otherwise = splitNutString sp (parseNutPlot sl : bl)
@@ -310,3 +307,5 @@ parseNutMeg nut = NutMeg { nutTitle = nt
       nd         = readNutElement NutDate hdr
       nps        = splitNutString bdy []
       mps        = M.fromList $ zip (map nutPlotName nps) nps
+
+-- encodeNutPlot :: NutPlot -> ByteString

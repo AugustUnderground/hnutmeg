@@ -38,6 +38,7 @@ tranTest = do
 nmosTest :: IO ()
 nmosTest  = do
     nut <- parseNutMeg <$> readNutRaw "./example/nutmos.raw"
+    --nut <- parseNutMeg <$> readNutRaw "../data/sky130-nmos.raw"
     
     let nutMap = M.fromList [( "DC Analysis" , flattenRealPlots . M.elems . nutPlots $ nut )]
         -- nut'   = NutMeg (nutTitle nut) (nutDate nut) nutMap
@@ -53,8 +54,8 @@ nmosTest  = do
 
 main :: IO ()
 main = do
-    --putStrLn "Transient test (./examples/nutbin.raw)."
-    --tranTest
+    putStrLn "Transient test (./examples/nutbin.raw)."
+    tranTest
     putStrLn "NMOS test (./examples/nutmos.raw)."
     nmosTest
     putStrLn "All tests done."
