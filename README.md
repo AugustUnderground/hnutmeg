@@ -2,6 +2,8 @@
 
 Read NutMeg data in haskell (with terrible performance).
 
+[Haddock](https://augustunderground.github.io/hnutmeg/)
+
 ## Usage
 
 Just add the latest commit to `extra-deps` in `stack.yaml`
