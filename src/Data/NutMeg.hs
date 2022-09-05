@@ -17,11 +17,12 @@ module Data.NutMeg
     , readNutRealRow, readNutComplexRow
     , nutPlot, nutFlag, nutWave
     , nutRealWave, asRealVector
-    , nutComplexWave, asComplexVector
+    -- , nutComplexWave, asComplexVector
     , flattenRealPlots
     , flattenComplexPlots
     , parseNutPlot
     , parseNutMeg
+    , parseNutHeader
     , readNutRaw
     -- , encodeNutPlot
     ) where
@@ -30,6 +31,7 @@ import           Data.Maybe
 import           Data.Int
 import           Data.Complex
 import           Data.Binary.Get
+import qualified Data.Algorithms.KMP   as KMP
 import qualified Data.Map.Strict       as M
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as CS
@@ -43,8 +45,8 @@ data NutWave = NutRealWave    {-# UNPACK #-} !(V.Vector Double)
     deriving (Show, Eq)
 
 nutWave :: NutWave -> Either (V.Vector (Complex Double)) (V.Vector Double)
-nutWave (NutRealWave nw) = Right nw
-nutWave (NutComplexWave nw) = Left nw
+nutWave (NutRealWave    nw) = Right nw
+nutWave (NutComplexWave nw) = Left  nw
 
 nutRealWave :: NutWave -> Maybe (V.Vector Double)
 nutRealWave (NutRealWave nw) = Just nw
@@ -68,7 +70,7 @@ flattenRealPlots nps = let { nutPlotName  = pn'
                            ; nutPlotType  = pt'
                            ; nutData      = dt'
                            } in NutPlot { .. }
-  where fp = head nps
+  where fp  = head nps
         pn' = nutPlotName fp
         nv' = nutNumVars fp
         np' = nutNumPoints fp
@@ -76,19 +78,19 @@ flattenRealPlots nps = let { nutPlotName  = pn'
         pt' = nutPlotType fp
         dt' = M.unionsWith joinRealWaves (map nutData nps)
 
-nutComplexWave :: NutWave -> Maybe (V.Vector (Complex Double))
-nutComplexWave (NutComplexWave nw) = Just nw
-nutComplexWave _                   = Nothing
-
-asComplexVector :: NutWave -> V.Vector (Complex Double)
-asComplexVector (NutComplexWave nw) = nw
-asComplexVector _                   = undefined
-
-concatComplexWaves :: [NutWave] -> NutWave
-concatComplexWaves = NutComplexWave . V.concat . map asComplexVector
-
-joinComplexWaves :: NutWave -> NutWave -> NutWave
-joinComplexWaves a b = concatComplexWaves [a, b]
+-- nutComplexWave :: NutWave -> Maybe (V.Vector (Complex Double))
+-- nutComplexWave (NutComplexWave nw) = Just nw
+-- nutComplexWave _                   = Nothing
+-- 
+-- asComplexVector :: NutWave -> V.Vector (Complex Double)
+-- asComplexVector (NutComplexWave nw) = nw
+-- asComplexVector _                   = undefined
+-- 
+-- concatComplexWaves :: [NutWave] -> NutWave
+-- concatComplexWaves = NutComplexWave . V.concat . map asComplexVector
+-- 
+-- joinComplexWaves :: NutWave -> NutWave -> NutWave
+-- joinComplexWaves a b = concatComplexWaves [a, b]
 
 flattenComplexPlots :: [NutPlot] -> NutPlot
 flattenComplexPlots nps = let { nutPlotName  = pn'
@@ -98,7 +100,7 @@ flattenComplexPlots nps = let { nutPlotName  = pn'
                               ; nutPlotType  = pt'
                               ; nutData      = dt'
                               } in NutPlot { .. }
-  where fp = head nps
+  where fp  = head nps
         pn' = nutPlotName fp
         nv' = nutNumVars fp
         np' = nutNumPoints fp
@@ -226,10 +228,6 @@ readNutComplexRow n o = V.fromList . runGet (skip (o * bytesPerComplex) >> decod
                        !ds <- decoder
                        return $! ( (r:+c) : ds )
 
-
--- vl = [rc (j * nv) | j <- [ 0 .. (np - 1) ]]
--- map V.length vl
-
 -- | Construct NutPlot type
 nutPlot :: String -> NutPlotType -> Int -> Int -> [String] -> BL.ByteString -> NutPlot
 nutPlot pn nt np nv vn bs 
@@ -240,8 +238,8 @@ nutPlot pn nt np nv vn bs
                   , nutPlotType  = nt
                   , nutData      = M.fromList $ zip vn dt }
     where 
-      rr = \i -> readNutRealRow (fromIntegral nv) (fromIntegral i) bs
-      rc = \i -> readNutComplexRow (fromIntegral nv) (fromIntegral i) bs
+      rr  = \i -> readNutRealRow (fromIntegral nv) (fromIntegral i) bs
+      rc  = \i -> readNutComplexRow (fromIntegral nv) (fromIntegral i) bs
       !dt = if nt == NutRealPlot 
                then map NutRealWave    . A.toColumns . A.fromRows 
                                        $ [rr (j * nv) | j <- [ 0 .. (np - 1) ]]
@@ -287,25 +285,30 @@ parseNutPlot plt = nutPlot pn fl np nv vn dt
       vn         = map (CS.unpack . (!!1) . CS.words) $ CS.lines vr
       dt         = BL.fromStrict . fromJust . BS.stripPrefix "Binary:\n" $ dat
 
--- | Split a nut String at BS.null s
-splitNutString :: BS.ByteString -> [NutPlot] -> [NutPlot]
-splitNutString bs bl | BS.null bs = bl
-                     | otherwise = splitNutString sp (parseNutPlot sl : bl)
-                            where Just ps  = BS.stripPrefix pnf bs
-                                  (fp, sp) = BS.breakSubstring pnf ps
-                                  sl       = BS.concat [pnf, fp]
-                                  pnf      = nutFieldName NutPlotname
+-- | Split a ByteString read from nutmeg file into NutPlots
+splitNutString :: [Int] -> BS.ByteString -> [NutPlot]
+splitNutString [ ] _         = []
+splitNutString [a]       str = [plt]
+  where
+    !b    = BS.length str
+    !plt  = parseNutPlot . BS.take (b - a) . BS.drop a $! str
+splitNutString (a:b:idx) str = plt : splitNutString idx' str
+  where
+    !plt  = parseNutPlot . BS.take (b - a) . BS.drop a $! str
+    !idx' = b:idx
 
 -- | Returns a NutMeg for given file contents.
 parseNutMeg :: BS.ByteString -> NutMeg
-parseNutMeg nut = NutMeg { nutTitle = nt
-                         , nutDate  = nd
-                         , nutPlots = mps }
+parseNutMeg !nut = NutMeg { nutTitle = nt
+                          , nutDate  = nd
+                          , nutPlots = mps }
     where 
       (hdr, bdy) = BS.breakSubstring (nutFieldName NutPlotname) nut
       nt         = readNutElement NutTitle hdr
       nd         = readNutElement NutDate hdr
-      nps        = splitNutString bdy []
-      mps        = M.fromList $ zip (map nutPlotName nps) nps
+      pn         = KMP.build . BS.unpack $! nutFieldName NutPlotname
+      !idx       = KMP.match pn $! BS.unpack bdy
+      !nps       = splitNutString idx bdy
+      !mps       = M.fromList $! zip (map nutPlotName nps) nps
 
 -- encodeNutPlot :: NutPlot -> ByteString

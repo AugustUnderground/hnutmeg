@@ -7,17 +7,17 @@ module Main where
 
 import Data.NutMeg
 
-import Data.Function (on)
-import Data.Maybe
-import qualified Data.Map as M
-import qualified Data.List as L
-import qualified Data.Vector.Unboxed as V
-import qualified Data.Matrix.Unboxed as A
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Char8 as CS
-import qualified Data.Text as T
-import Graphics.Vega.VegaLite hiding (sample, shape)
+import           Data.Function                       (on)
+import           Data.Maybe                          (fromJust, mapMaybe)
+import qualified Data.Map               as M
+import qualified Data.List              as L
+import qualified Data.Vector.Unboxed    as V
+import qualified Data.Matrix.Unboxed    as A
+import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Lazy   as BL
+import qualified Data.ByteString.Char8  as CS
+import qualified Data.Text              as T
+import           Graphics.Vega.VegaLite       hiding (sample, shape)
 
 tranTest :: IO ()
 tranTest = do
@@ -38,7 +38,9 @@ tranTest = do
 nmosTest :: IO ()
 nmosTest  = do
     nut <- parseNutMeg <$> readNutRaw "./example/nutmos.raw"
-    --nut <- parseNutMeg <$> readNutRaw "../data/sky130-nmos.raw"
+
+    -- !raw <- readNutRaw "../primitive-device-characterization/netlist/xh035-nmos.raw"
+    -- let nut = parseNutMeg raw
     
     let nutMap = M.fromList [( "DC Analysis" , flattenRealPlots . M.elems . nutPlots $ nut )]
         -- nut'   = NutMeg (nutTitle nut) (nutDate nut) nutMap

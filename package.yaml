@@ -22,15 +22,14 @@ description:         Please see the README on GitHub at <https://github.com/augu
 dependencies:
 - base >= 4.7 && < 5
 - bytestring
+- KMP
 - binary
 - vector-binary-instances
 - containers
-- split
 - vector
 - matrices
 - hmatrix
 - hmatrix-csv
-  #- binary-strict
 
 library:
   source-dirs: src

@@ -10,6 +10,7 @@ ghc-options:
 extra-deps:
 - binary-strict-0.4.8.6@sha256:456da8c1452a18349fbb02134ba608cf7420014cb93e9c39e7e4b99de1c48a7e,2222
 - hmatrix-csv-0.1.0.2@sha256:687460573413dbb23ba3eeff95e9fac342a2d439db1006846767a095e7f23356,1031
+- KMP-0.2.0.0@sha256:6dfbac03ef00ebd9347234732cb86a40f62ab5a80c0cc6bedb8eb51766f7df28,2562
 
 # extra-include-dirs: [/path/to/dir]
 # extra-lib-dirs: [/path/to/dir]
