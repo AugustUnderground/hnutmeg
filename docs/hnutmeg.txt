@@ -83,8 +83,6 @@ nutFlag :: String -> NutPlotType
 nutWave :: NutWave -> Either (Vector (Complex Double)) (Vector Double)
 nutRealWave :: NutWave -> Maybe (Vector Double)
 asRealVector :: NutWave -> Vector Double
-nutComplexWave :: NutWave -> Maybe (Vector (Complex Double))
-asComplexVector :: NutWave -> Vector (Complex Double)
 flattenRealPlots :: [NutPlot] -> NutPlot
 flattenComplexPlots :: [NutPlot] -> NutPlot
 
@@ -93,6 +91,9 @@ parseNutPlot :: ByteString -> NutPlot
 
 -- | Returns a NutMeg for given file contents.
 parseNutMeg :: ByteString -> NutMeg
+
+-- | Extract NutMeg header information
+parseNutHeader :: ByteString -> [String]
 
 -- | Convenience function for reading a NutMeg File
 readNutRaw :: FilePath -> IO ByteString
