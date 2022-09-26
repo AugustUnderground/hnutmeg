@@ -5,7 +5,7 @@
 
 module Main where
 
-import Data.NutMeg
+import           Data.NutMeg
 
 import           Data.Function                       (on)
 import           Data.Maybe                          (fromJust, mapMaybe)
