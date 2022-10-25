@@ -238,13 +238,15 @@ nutPlot pn nt np nv vn bs
                   , nutPlotType  = nt
                   , nutData      = M.fromList $ zip vn dt }
     where 
-      rr  = \i -> readNutRealRow (fromIntegral nv) (fromIntegral i) bs
-      rc  = \i -> readNutComplexRow (fromIntegral nv) (fromIntegral i) bs
       !dt = if nt == NutRealPlot 
                then map NutRealWave    . A.toColumns . A.fromRows 
                                        $ [rr (j * nv) | j <- [ 0 .. (np - 1) ]]
                else map NutComplexWave . A.toColumns . A.fromRows 
                                        $ [rc (j * nv) | j <- [ 0 .. (np - 1) ]]
+      rr :: Int -> V.Vector Double
+      rr i = readNutRealRow    (fromIntegral nv) (fromIntegral i) bs
+      rc :: Int -> V.Vector (Complex Double)
+      rc i = readNutComplexRow (fromIntegral nv) (fromIntegral i) bs
 
 -- | Get the first NutMeg Element and the Rest
 popNutElement :: NutField -> BS.ByteString -> (Maybe BS.ByteString, BS.ByteString)
@@ -279,7 +281,7 @@ parseNutPlot plt = nutPlot pn fl np nv vn dt
       pn         = head hdr'
       fl         = nutFlag (hdr' !! 1)
       nv         = read (hdr' !! 2) :: Int
-      np         = read (hdr' !! 3) :: Int
+      np         = max 1 $ read (hdr' !! 3) :: Int
       vr         = snd . BS.breakSubstring "\t" . snd 
                  . BS.breakSubstring (nutFieldName NutVariables) $ hdr
       vn         = map (CS.unpack . (!!1) . CS.words) $ CS.lines vr
@@ -287,7 +289,7 @@ parseNutPlot plt = nutPlot pn fl np nv vn dt
 
 -- | Split a ByteString read from nutmeg file into NutPlots
 splitNutString :: [Int] -> BS.ByteString -> [NutPlot]
-splitNutString [ ] _         = []
+splitNutString [ ]       _   = []
 splitNutString [a]       str = [plt]
   where
     !b    = BS.length str

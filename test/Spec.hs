@@ -39,6 +39,9 @@ nmosTest :: IO ()
 nmosTest  = do
     nut <- parseNutMeg <$> readNutRaw "./example/nutmos.raw"
 
+    -- nut <- readNutRaw "/tmp/uhlmanny-sym-gpkd180-c3012dc1fb2d48ee/hspectre.raw"
+    -- let meg = parseNutMeg nut
+    -- (nutPlots meg) M.! "dc4"
     -- !raw <- readNutRaw "../primitive-device-characterization/netlist/xh035-nmos.raw"
     -- let nut = parseNutMeg raw
     
