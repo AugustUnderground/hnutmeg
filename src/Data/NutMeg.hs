@@ -17,7 +17,8 @@ module Data.NutMeg
     , readNutRealRow, readNutComplexRow
     , nutPlot, nutFlag, nutWave
     , nutRealWave, asRealVector
-    -- , nutComplexWave, asComplexVector
+    , concatComplexWaves, joinComplexWaves
+    , nutComplexWave, asComplexVector
     , flattenRealPlots
     , flattenComplexPlots
     , parseNutPlot
@@ -78,19 +79,19 @@ flattenRealPlots nps = let { nutPlotName  = pn'
         pt' = nutPlotType fp
         dt' = M.unionsWith joinRealWaves (map nutData nps)
 
--- nutComplexWave :: NutWave -> Maybe (V.Vector (Complex Double))
--- nutComplexWave (NutComplexWave nw) = Just nw
--- nutComplexWave _                   = Nothing
--- 
--- asComplexVector :: NutWave -> V.Vector (Complex Double)
--- asComplexVector (NutComplexWave nw) = nw
--- asComplexVector _                   = undefined
--- 
--- concatComplexWaves :: [NutWave] -> NutWave
--- concatComplexWaves = NutComplexWave . V.concat . map asComplexVector
--- 
--- joinComplexWaves :: NutWave -> NutWave -> NutWave
--- joinComplexWaves a b = concatComplexWaves [a, b]
+nutComplexWave :: NutWave -> Maybe (V.Vector (Complex Double))
+nutComplexWave (NutComplexWave nw) = Just nw
+nutComplexWave _                   = Nothing
+
+asComplexVector :: NutWave -> V.Vector (Complex Double)
+asComplexVector (NutComplexWave nw) = nw
+asComplexVector _                   = undefined
+
+concatComplexWaves :: [NutWave] -> NutWave
+concatComplexWaves = NutComplexWave . V.concat . map asComplexVector
+
+joinComplexWaves :: NutWave -> NutWave -> NutWave
+joinComplexWaves a b = concatComplexWaves [a, b]
 
 flattenComplexPlots :: [NutPlot] -> NutPlot
 flattenComplexPlots nps = let { nutPlotName  = pn'
