@@ -7,7 +7,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | 
+-- | Read Binary Nutmeg Data
 module Data.NutMeg ( NutMeg (..)
                    , NutPlot (..)
                    , NutWave (..)
@@ -26,6 +26,7 @@ module Data.NutMeg ( NutMeg (..)
                    , flattenComplexPlots
                    , parseNutPlot
                    , parseNutMeg
+                   , parseNutMeg'
                    , parseNutHeader
                    , readNutRaw
                    -- , encodeNutPlot
@@ -33,7 +34,6 @@ module Data.NutMeg ( NutMeg (..)
 
 import           GHC.Generics
 import           Control.DeepSeq
-import           System.IO
 import           Data.Maybe
 import           Data.Int
 import           Data.Complex
@@ -204,12 +204,12 @@ bytesPerComplex' = fromIntegral bytesPerReal
 
 -- | Convenience function for reading a NutMeg File
 readNutRaw :: FilePath -> IO BS.ByteString
--- readNutRaw = BS.readFile
-readNutRaw rawPath = do
-    !rawFile <- openFile rawPath ReadMode 
-    !contents <- BS.hGetContents rawFile
-    rnf contents `deepseq` hClose rawFile
-    pure contents
+readNutRaw = BS.readFile
+-- readNutRaw rawPath = do
+--     !rawFile <- openFile rawPath ReadMode 
+--     !contents <- BS.hGetContents rawFile
+--     rnf contents `deepseq` hClose rawFile
+--     pure contents
 
 -- | Reads a line from a list of ByteStrings, that starts with a given prefix.
 readNutElement' :: BS.ByteString -> [BS.ByteString] -> Maybe String
@@ -322,18 +322,25 @@ splitNutString (a:b:idx) str = plt : splitNutString idx' str
     !plt  = parseNutPlot . BS.take (b - a) . BS.drop a $! str
     !idx' = b:idx
 
--- | Returns a NutMeg for given file contents.
-parseNutMeg :: BS.ByteString -> NutMeg
-parseNutMeg !nut = NutMeg { nutTitle = nt
-                          , nutDate  = nd
-                          , nutPlots = mps }
+-- | Parse nutmeg content with offset and return new offset
+parseNutMeg' :: Int -> BS.ByteString -> (NutMeg, Int)
+parseNutMeg' !offset !nut = (meg, off) 
     where 
       (hdr, bdy) = BS.breakSubstring (nutFieldName NutPlotname) nut
+      bdy'       = BS.drop offset bdy
       nt         = readNutElement NutTitle hdr
       nd         = readNutElement NutDate hdr
       pn         = KMP.build . BS.unpack $! nutFieldName NutPlotname
-      !idx       = KMP.match pn $! BS.unpack bdy
-      !nps       = splitNutString idx bdy
+      !idx       = KMP.match pn $! BS.unpack bdy'
+      !nps       = splitNutString idx bdy'
       !mps       = M.fromList $! zip (map nutPlotName nps) nps
+      !meg       = NutMeg { nutTitle = nt
+                          , nutDate  = nd
+                          , nutPlots = mps }
+      off        = BS.length nut - BS.length hdr
+
+-- | Parse Nutmeg content without offset and discard offset
+parseNutMeg :: BS.ByteString -> NutMeg
+parseNutMeg = fst . parseNutMeg' 0
 
 -- encodeNutPlot :: NutPlot -> ByteString
