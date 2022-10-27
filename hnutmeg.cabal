@@ -36,6 +36,7 @@ library
     , binary
     , bytestring
     , containers
+    , deepseq
     , hmatrix
     , hmatrix-csv
     , matrices
@@ -57,6 +58,7 @@ test-suite hnutmeg-test
     , binary
     , bytestring
     , containers
+    , deepseq
     , hmatrix
     , hmatrix-csv
     , hnutmeg

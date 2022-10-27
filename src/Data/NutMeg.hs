@@ -1,33 +1,38 @@
 {-# OPTIONS_GHC -Wall #-}
 
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.NutMeg
-    ( NutMeg (..)
-    , NutPlot (..)
-    , NutWave (..)
-    , NutPlotType (..)
-    , NutField (..)
-    , nutFieldName, nutFieldName'
-    , bytesPerReal, bytesPerReal'
-    , bytesPerComplex, bytesPerComplex'
-    , popNutElement
-    , readNutRealRow, readNutComplexRow
-    , nutPlot, nutFlag, nutWave
-    , nutRealWave, asRealVector
-    , concatComplexWaves, joinComplexWaves
-    , nutComplexWave, asComplexVector
-    , flattenRealPlots
-    , flattenComplexPlots
-    , parseNutPlot
-    , parseNutMeg
-    , parseNutHeader
-    , readNutRaw
-    -- , encodeNutPlot
-    ) where
+-- | 
+module Data.NutMeg ( NutMeg (..)
+                   , NutPlot (..)
+                   , NutWave (..)
+                   , NutPlotType (..)
+                   , NutField (..)
+                   , nutFieldName, nutFieldName'
+                   , bytesPerReal, bytesPerReal'
+                   , bytesPerComplex, bytesPerComplex'
+                   , popNutElement
+                   , readNutRealRow, readNutComplexRow
+                   , nutPlot, nutFlag, nutWave
+                   , nutRealWave, asRealVector
+                   , concatComplexWaves, joinComplexWaves
+                   , nutComplexWave, asComplexVector
+                   , flattenRealPlots
+                   , flattenComplexPlots
+                   , parseNutPlot
+                   , parseNutMeg
+                   , parseNutHeader
+                   , readNutRaw
+                   -- , encodeNutPlot
+                   ) where
 
+import           GHC.Generics
+import           Control.DeepSeq
 import           Data.Maybe
 import           Data.Int
 import           Data.Complex
@@ -43,26 +48,32 @@ import qualified Data.Matrix.Unboxed   as A
 -- | NutMeg wave form data dypes
 data NutWave = NutRealWave    {-# UNPACK #-} !(V.Vector Double)
              | NutComplexWave {-# UNPACK #-} !(V.Vector (Complex Double))
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, NFData)
 
+-- | Convert a nut wave to either real or complex valued Vector
 nutWave :: NutWave -> Either (V.Vector (Complex Double)) (V.Vector Double)
 nutWave (NutRealWave    nw) = Right nw
 nutWave (NutComplexWave nw) = Left  nw
 
+-- | Convert a nut wave to a Real valued Vector
 nutRealWave :: NutWave -> Maybe (V.Vector Double)
 nutRealWave (NutRealWave nw) = Just nw
 nutRealWave _                = Nothing
 
+-- | Convert a nut wave to a Real valued Vector
 asRealVector :: NutWave -> V.Vector Double
 asRealVector (NutRealWave nw) = nw
 asRealVector _                = undefined
 
+-- | Concatenate real waves
 concatRealWaves :: [NutWave] -> NutWave
 concatRealWaves = NutRealWave . V.concat . map asRealVector
 
+-- | Convenience for zipping real waves
 joinRealWaves :: NutWave -> NutWave -> NutWave
 joinRealWaves a b = concatRealWaves [a, b]
 
+-- | Concatenate Data of plots with same variable names
 flattenRealPlots :: [NutPlot] -> NutPlot
 flattenRealPlots nps = let { nutPlotName  = pn'
                            ; nutNumVars   = nv'
@@ -79,20 +90,25 @@ flattenRealPlots nps = let { nutPlotName  = pn'
         pt' = nutPlotType fp
         dt' = M.unionsWith joinRealWaves (map nutData nps)
 
+-- | Convert to Complex valued Vector
 nutComplexWave :: NutWave -> Maybe (V.Vector (Complex Double))
 nutComplexWave (NutComplexWave nw) = Just nw
 nutComplexWave _                   = Nothing
 
+-- | Convert to Complex valued Vector
 asComplexVector :: NutWave -> V.Vector (Complex Double)
 asComplexVector (NutComplexWave nw) = nw
 asComplexVector _                   = undefined
 
+-- | Concatenate complex nut waves
 concatComplexWaves :: [NutWave] -> NutWave
 concatComplexWaves = NutComplexWave . V.concat . map asComplexVector
 
+-- | Convenience for zipping complex waves
 joinComplexWaves :: NutWave -> NutWave -> NutWave
 joinComplexWaves a b = concatComplexWaves [a, b]
 
+-- | Flatten plots with same variable names
 flattenComplexPlots :: [NutPlot] -> NutPlot
 flattenComplexPlots nps = let { nutPlotName  = pn'
                               ; nutNumVars   = nv'
@@ -111,7 +127,7 @@ flattenComplexPlots nps = let { nutPlotName  = pn'
 
 -- | Real and Complex NutMeg plots
 data NutPlotType = NutRealPlot | NutComplexPlot
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, NFData)
 
 -- | Convert a flag from file to plot type
 nutFlag :: String -> NutPlotType
@@ -128,7 +144,7 @@ data NutField = NutTitle
               | NutNoPoints 
               | NutVariables 
               | NutBinData
-    deriving (Show, Eq, Enum, Ord, Bounded)
+    deriving (Show, Eq, Enum, Ord, Bounded, Generic, NFData)
 
 -- Alternaitve Show instance calling `nutFieldName`.
 -- instance Show NutField where
@@ -162,14 +178,14 @@ data NutPlot = NutPlot { nutPlotName  :: String
 --                            , nutVariables   :: [String]
 --                            , nutPlotType    :: NutPlotType
 --                            , complexNutData :: !(M.Map String NutWave) }
-    deriving (Show)
+    deriving (Show, Generic, NFData)
 
 -- | Representation of NutMeg file contents, where plot names are mapped to
 -- corresponding plot types and data.
 data NutMeg = NutMeg { nutTitle :: String
                      , nutDate  :: String
                      , nutPlots :: !(M.Map String NutPlot)}
-    deriving (Show)
+    deriving (Show, Generic, NFData)
 
 -- | How many bytes per real data point
 bytesPerReal :: Int
@@ -240,9 +256,9 @@ nutPlot pn nt np nv vn bs
                   , nutData      = M.fromList $ zip vn dt }
     where 
       !dt = if nt == NutRealPlot 
-               then map NutRealWave    . A.toColumns . A.fromRows 
+               then map NutRealWave    . force . A.toColumns . A.fromRows 
                                        $ [rr (j * nv) | j <- [ 0 .. (np - 1) ]]
-               else map NutComplexWave . A.toColumns . A.fromRows 
+               else map NutComplexWave . force . A.toColumns . A.fromRows 
                                        $ [rc (j * nv) | j <- [ 0 .. (np - 1) ]]
       rr :: Int -> V.Vector Double
       rr i = readNutRealRow    (fromIntegral nv) (fromIntegral i) bs
@@ -286,7 +302,7 @@ parseNutPlot plt = nutPlot pn fl np nv vn dt
       vr         = snd . BS.breakSubstring "\t" . snd 
                  . BS.breakSubstring (nutFieldName NutVariables) $ hdr
       vn         = map (CS.unpack . (!!1) . CS.words) $ CS.lines vr
-      dt         = BL.fromStrict . fromJust . BS.stripPrefix "Binary:\n" $ dat
+      dt         = force . BL.fromStrict . fromJust . BS.stripPrefix "Binary:\n" $ dat
 
 -- | Split a ByteString read from nutmeg file into NutPlots
 splitNutString :: [Int] -> BS.ByteString -> [NutPlot]

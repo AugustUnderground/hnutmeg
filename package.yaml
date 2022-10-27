@@ -24,6 +24,7 @@ dependencies:
 - bytestring
 - KMP
 - binary
+- deepseq
 - vector-binary-instances
 - containers
 - vector
