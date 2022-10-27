@@ -33,6 +33,7 @@ module Data.NutMeg ( NutMeg (..)
 
 import           GHC.Generics
 import           Control.DeepSeq
+import           System.IO
 import           Data.Maybe
 import           Data.Int
 import           Data.Complex
@@ -203,7 +204,12 @@ bytesPerComplex' = fromIntegral bytesPerReal
 
 -- | Convenience function for reading a NutMeg File
 readNutRaw :: FilePath -> IO BS.ByteString
-readNutRaw = BS.readFile
+-- readNutRaw = BS.readFile
+readNutRaw rawPath = do
+    !rawFile <- openFile rawPath ReadMode 
+    !contents <- BS.hGetContents rawFile
+    rnf contents `deepseq` hClose rawFile
+    pure contents
 
 -- | Reads a line from a list of ByteStrings, that starts with a given prefix.
 readNutElement' :: BS.ByteString -> [BS.ByteString] -> Maybe String
