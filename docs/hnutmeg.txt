@@ -5,7 +5,7 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.2.1.0
+@version 0.2.2.0
 
 
 -- | Read Binary Nutmeg Data
@@ -94,8 +94,11 @@ NutBinData :: NutField
 -- | Convenience function for reading a NutMeg File
 readNutRaw :: FilePath -> IO ByteString
 
--- | Read and Prase NutMeg
+-- | Read and Prase NutMeg, ignoring file offset
 readNutRaw' :: FilePath -> IO NutMeg
+
+-- | Read and Prase NutMeg, considering file offset
+readNutRawWithOffset' :: Int -> FilePath -> IO (NutMeg, Int)
 
 -- | Returns a NutPlot for a given ByteString segment.
 parseNutPlot :: [ByteString] -> NutPlot
@@ -104,10 +107,10 @@ parseNutPlot :: [ByteString] -> NutPlot
 parseNutPlots :: [ByteString] -> [NutPlot]
 
 -- | Parse Nutmeg content
-parseNutMeg :: ByteString -> NutMeg
+parseNutMeg :: Int -> ByteString -> (NutMeg, Int)
 
 -- | Parse nutmeg content with offset and return new offset
-parseNutMeg' :: [ByteString] -> (NutMeg, Int64)
+parseNutMeg' :: [ByteString] -> NutMeg
 
 -- | Translate fieldname to ByteString representation in NutMeg file.
 nutFieldName :: NutField -> ByteString

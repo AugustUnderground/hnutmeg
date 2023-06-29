@@ -40,8 +40,9 @@ tranTest = do
 
 nmosTest :: IO ()
 nmosTest  = do
+
     !tic <- getTime Realtime
-    !nut <- parseNutMeg <$> readNutRaw "./example/nutmos.raw"
+    !nut <- readNutRaw' "./example/nutmos.raw"
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
     putStrLn $ "1x : " ++ show td ++ "s"
@@ -50,7 +51,7 @@ nmosTest  = do
     !tic' <- getTime Realtime
     -- !nut' <- traverseConcurrently Par' (fmap parseNutMeg . readNutRaw)
     --             $ replicate n "./example/nutmos.raw"
-    !nut' <- replicateConcurrently Par' n (parseNutMeg <$> readNutRaw "./example/nutmos.raw")
+    !nut' <- replicateConcurrently Par' n (readNutRaw' "./example/nutmos.raw")
     !toc' <- getTime Realtime
     let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"

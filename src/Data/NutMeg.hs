@@ -17,7 +17,7 @@ module Data.NutMeg ( -- * Data Types
                    , NutPlotType (..)
                    , NutField (..)
                    -- * Reading and Parsing Nutmeg Binary
-                   , readNutRaw, readNutRaw'
+                   , readNutRaw, readNutRaw', readNutRawWithOffset'
                    , parseNutPlot, parseNutPlots
                    , parseNutMeg, parseNutMeg'
                    -- * Misc
@@ -275,30 +275,41 @@ parseNutPlots bdy = parseNutPlot plt' : parseNutPlots bdy'
     bdy'       = if null rst' || length pt' < 2 then [] else nh : rst'
 
 -- | Parse nutmeg content with offset and return new offset
-parseNutMeg' :: [BL.ByteString] -> (NutMeg, Int64)
-parseNutMeg' (nt':nd':bdy') = (meg, off) 
+parseNutMeg' :: [BL.ByteString] -> NutMeg
+parseNutMeg' (nt':nd':bdy') = meg
   where 
-    nt   = readNutElement NutTitle nt'
-    nd   = readNutElement NutDate  nd'
-    !nps = parseNutPlots bdy'
-    !mps = M.fromList $! zip (map nutPlotName nps) nps
-    !meg = NutMeg { nutTitle = nt
-                  , nutDate  = nd
-                  , nutPlots = mps }
-    !off = 0
-
+    nt    = readNutElement NutTitle nt'
+    nd    = readNutElement NutDate  nd'
+    !nps  = parseNutPlots bdy'
+    !mps  = M.fromList $! zip (map nutPlotName nps) nps
+    !meg  = NutMeg { nutTitle = nt
+                   , nutDate  = nd
+                   , nutPlots = mps }
 parseNutMeg' _ = error "Empty File or Wrong Format"
 
 -- | Parse Nutmeg content 
-parseNutMeg :: BL.ByteString -> NutMeg
-parseNutMeg = fst . parseNutMeg' . CL.lines
+parseNutMeg :: Int -> BL.ByteString -> (NutMeg, Int)
+parseNutMeg 0   bs = (nut', off')
+  where
+    nut'  = parseNutMeg' $ CL.lines bs
+    off' = fromIntegral $ BL.length bs
+parseNutMeg off bs = (nut', off')
+   where 
+     off' = fromIntegral $ BL.length bs
+     hdr = take 2 $ CL.lines bs
+     bdy = CL.lines $ BL.drop (fromIntegral off) bs
+     nut' = parseNutMeg' $ hdr ++ bdy
 
 -- | Convenience function for reading a NutMeg File
 readNutRaw :: FilePath -> IO BL.ByteString
 readNutRaw = BL.readFile
 
--- | Read and Prase NutMeg
+-- | Read and Prase NutMeg, ignoring file offset
 readNutRaw' :: FilePath -> IO NutMeg
-readNutRaw' p = parseNutMeg <$> readNutRaw p
+readNutRaw' p = fst . parseNutMeg 0 <$> readNutRaw p
+
+-- | Read and Prase NutMeg, considering file offset
+readNutRawWithOffset' :: Int -> FilePath -> IO (NutMeg, Int)
+readNutRawWithOffset' o p = parseNutMeg o <$> readNutRaw p
 
 -- encodeNutPlot :: NutPlot -> ByteString
