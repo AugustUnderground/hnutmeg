@@ -7,22 +7,23 @@ module Main where
 
 import           Data.NutMeg
 
+import           Control.DeepSeq
+import           Control.Scheduler
+import           System.Clock
+import qualified Data.Binary.Get             as B
 import           Data.Function                       (on)
 import           Data.Maybe                          (fromJust, mapMaybe)
-import qualified Data.Map               as M
-import qualified Data.List              as L
-import qualified Data.Vector.Unboxed    as V
-import qualified Data.Matrix.Unboxed    as A
-import qualified Data.ByteString        as BS
-import qualified Data.ByteString.Lazy   as BL
-import qualified Data.ByteString.Char8  as CS
-import qualified Data.Text              as T
-import           Graphics.Vega.VegaLite       hiding (sample, shape)
+import qualified Data.Map                    as M
+import qualified Data.List                   as L
+import qualified Data.Vector.Unboxed         as V
+import qualified Data.ByteString.Lazy        as BL
+import qualified Data.ByteString.Lazy.Char8  as CL
+import qualified Data.Text                   as T
+import           Graphics.Vega.VegaLite             hiding (sample, shape)
 
 tranTest :: IO ()
 tranTest = do
-    nut <- parseNutMeg <$> readNutRaw "./example/nutbin.raw"
-    
+    !nut <- parseNutMeg <$> readNutRaw "./example/nutbin.raw"
     let nutMap   = nutPlots nut
         Just plt = M.lookup (last $ M.keys nutMap) nutMap
         vm   = M.map asRealVector . nutData $ plt
@@ -37,14 +38,21 @@ tranTest = do
 
 nmosTest :: IO ()
 nmosTest  = do
-    nut <- parseNutMeg <$> readNutRaw "./example/nutmos.raw"
+    !tic <- getTime Realtime
+    !nut <- parseNutMeg <$> readNutRaw "./example/nutmos.raw"
+    !toc <- getTime Realtime
+    let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
+    putStrLn $ "1x : " ++ show td ++ "s"
 
-    -- nut <- readNutRaw "/tmp/uhlmanny-sym-gpkd180-c3012dc1fb2d48ee/hspectre.raw"
-    -- let meg = parseNutMeg nut
-    -- (nutPlots meg) M.! "dc4"
-    -- !raw <- readNutRaw "../primitive-device-characterization/netlist/xh035-nmos.raw"
-    -- let nut = parseNutMeg raw
-    
+    let n = 5
+    !tic' <- getTime Realtime
+    -- !nut' <- traverseConcurrently Par' (fmap parseNutMeg . readNutRaw)
+    --             $ replicate n "./example/nutmos.raw"
+    !nut' <- replicateConcurrently Par' n (parseNutMeg <$> readNutRaw "./example/nutmos.raw")
+    !toc' <- getTime Realtime
+    let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
+    putStrLn $ show n  ++ "x : " ++ show td' ++ "s"
+
     let nutMap = M.fromList [( "DC Analysis" , flattenRealPlots . M.elems . nutPlots $ nut )]
         -- nut'   = NutMeg (nutTitle nut) (nutDate nut) nutMap
         plt    = snd . head . M.toList $ nutMap -- . nutPlots $ nut'
@@ -113,6 +121,5 @@ roundn d n = fromInteger (round $ d * (10^n)) / (10.0^^n)
 
 filterData :: ([Double] -> Bool) -> M.Map String (V.Vector Double) -> M.Map String [Double]
 filterData f m = M.fromList . zip p . L.transpose . L.filter f
-               . map V.toList . A.toRows . A.fromColumns 
-               . mapMaybe (`M.lookup` m) $ p
+               . L.transpose . map (V.toList . fromJust . (`M.lookup` m)) $ p
     where p = M.keys m

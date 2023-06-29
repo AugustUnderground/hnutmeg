@@ -1,5 +1,5 @@
 name:                hnutmeg
-version:             0.1.0.0
+version:             0.2.0.0
 github:              "augustunderground/hnutmeg"
 license:             BSD3
 author:              "Yannick Uhlmann"
@@ -22,15 +22,13 @@ description:         Please see the README on GitHub at <https://github.com/augu
 dependencies:
 - base >= 4.7 && < 5
 - bytestring
-- KMP
 - binary
 - deepseq
-- vector-binary-instances
 - containers
 - vector
-- matrices
-- hmatrix
-- hmatrix-csv
+- split
+- scheduler
+- clock
 
 library:
   source-dirs: src
@@ -43,6 +41,7 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
     dependencies:
     - text
     - hvega

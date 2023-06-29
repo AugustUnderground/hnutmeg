@@ -5,26 +5,31 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.1.0.0
+@version 0.2.0.0
 
+
+-- | Read Binary Nutmeg Data
 module Data.NutMeg
 
 -- | Representation of NutMeg file contents, where plot names are mapped to
 --   corresponding plot types and data.
 data NutMeg
-NutMeg :: String -> String -> !Map String NutPlot -> NutMeg
-[nutTitle] :: NutMeg -> String
-[nutDate] :: NutMeg -> String
+NutMeg :: !String -> !String -> !Map String NutPlot -> NutMeg
+[nutTitle] :: NutMeg -> !String
+[nutDate] :: NutMeg -> !String
 [nutPlots] :: NutMeg -> !Map String NutPlot
 
--- | A <tt>plot</tt> as it is represented within the NutMeg File format.
+-- | Convenient Transformer to Lazy ByteString nutFieldName' :: NutField
+--   -&gt; BL.ByteString nutFieldName' = BL.fromStrict . nutFieldName
+--   
+--   A <tt>plot</tt> as it is represented within the NutMeg File format.
 data NutPlot
-NutPlot :: String -> Int -> Int -> [String] -> NutPlotType -> !Map String NutWave -> NutPlot
-[nutPlotName] :: NutPlot -> String
-[nutNumVars] :: NutPlot -> Int
-[nutNumPoints] :: NutPlot -> Int
-[nutVariables] :: NutPlot -> [String]
-[nutPlotType] :: NutPlot -> NutPlotType
+NutPlot :: !String -> !Int -> !Int -> ![String] -> !NutPlotType -> !Map String NutWave -> NutPlot
+[nutPlotName] :: NutPlot -> !String
+[nutNumVars] :: NutPlot -> !Int
+[nutNumPoints] :: NutPlot -> !Int
+[nutVariables] :: NutPlot -> ![String]
+[nutPlotType] :: NutPlot -> !NutPlotType
 [nutData] :: NutPlot -> !Map String NutWave
 
 -- | NutMeg wave form data dypes
@@ -51,60 +56,82 @@ NutBinData :: NutField
 -- | Translate fieldname to ByteString representation in NutMeg file.
 nutFieldName :: NutField -> ByteString
 
--- | Convenient Transformer to Lazy ByteString
-nutFieldName' :: NutField -> ByteString
-
--- | How many bytes per real data point
-bytesPerReal :: Int
-
 -- | Convenient transformation to Int64 for certain calculations
-bytesPerReal' :: Int64
+bytesPerReal :: Int64
 
 -- | How many bytes per complex data point
-bytesPerComplex :: Int
-
--- | Convenient transformation to Int64 for certain calculations
-bytesPerComplex' :: Int64
-
--- | Get the first NutMeg Element and the Rest
-popNutElement :: NutField -> ByteString -> (Maybe ByteString, ByteString)
-
--- | Read a row of real valued data
-readNutRealRow :: Int64 -> Int -> ByteString -> Vector Double
-
--- | Read a row of complex valued data
-readNutComplexRow :: Int64 -> Int -> ByteString -> Vector (Complex Double)
+bytesPerComplex :: Int64
 
 -- | Construct NutPlot type
 nutPlot :: String -> NutPlotType -> Int -> Int -> [String] -> ByteString -> NutPlot
 
 -- | Convert a flag from file to plot type
 nutFlag :: String -> NutPlotType
+
+-- | Convert a nut wave to either real or complex valued Vector
 nutWave :: NutWave -> Either (Vector (Complex Double)) (Vector Double)
+
+-- | Convert a nut wave to a Real valued Vector
 nutRealWave :: NutWave -> Maybe (Vector Double)
+
+-- | Convert a nut wave to a Real valued Vector
 asRealVector :: NutWave -> Vector Double
+
+-- | Read block of real data
+readRealBinary :: ByteString -> [Double]
+
+-- | Read block of complex data
+readComplexBinary :: ByteString -> [Complex Double]
+
+-- | Concatenate complex nut waves
+concatComplexWaves :: [NutWave] -> NutWave
+
+-- | Convenience for zipping complex waves
+joinComplexWaves :: NutWave -> NutWave -> NutWave
+
+-- | Convert to Complex valued Vector
+nutComplexWave :: NutWave -> Maybe (Vector (Complex Double))
+
+-- | Convert to Complex valued Vector
+asComplexVector :: NutWave -> Vector (Complex Double)
+
+-- | Concatenate Data of plots with same variable names
 flattenRealPlots :: [NutPlot] -> NutPlot
+
+-- | Flatten plots with same variable names
 flattenComplexPlots :: [NutPlot] -> NutPlot
 
 -- | Returns a NutPlot for a given ByteString segment.
-parseNutPlot :: ByteString -> NutPlot
+parseNutPlot :: [ByteString] -> NutPlot
+parseNutPlots :: [ByteString] -> [NutPlot]
 
--- | Returns a NutMeg for given file contents.
+-- | Parse Nutmeg content
 parseNutMeg :: ByteString -> NutMeg
 
--- | Extract NutMeg header information
-parseNutHeader :: ByteString -> [String]
+-- | Parse nutmeg content with offset and return new offset
+parseNutMeg' :: [ByteString] -> (NutMeg, Int64)
 
 -- | Convenience function for reading a NutMeg File
 readNutRaw :: FilePath -> IO ByteString
+readNutRaw' :: FilePath -> IO NutMeg
+instance Control.DeepSeq.NFData Data.NutMeg.NutWave
+instance GHC.Generics.Generic Data.NutMeg.NutWave
 instance GHC.Classes.Eq Data.NutMeg.NutWave
 instance GHC.Show.Show Data.NutMeg.NutWave
+instance Control.DeepSeq.NFData Data.NutMeg.NutPlotType
+instance GHC.Generics.Generic Data.NutMeg.NutPlotType
 instance GHC.Classes.Eq Data.NutMeg.NutPlotType
 instance GHC.Show.Show Data.NutMeg.NutPlotType
+instance Control.DeepSeq.NFData Data.NutMeg.NutField
+instance GHC.Generics.Generic Data.NutMeg.NutField
 instance GHC.Enum.Bounded Data.NutMeg.NutField
 instance GHC.Classes.Ord Data.NutMeg.NutField
 instance GHC.Enum.Enum Data.NutMeg.NutField
 instance GHC.Classes.Eq Data.NutMeg.NutField
 instance GHC.Show.Show Data.NutMeg.NutField
+instance Control.DeepSeq.NFData Data.NutMeg.NutPlot
+instance GHC.Generics.Generic Data.NutMeg.NutPlot
 instance GHC.Show.Show Data.NutMeg.NutPlot
+instance Control.DeepSeq.NFData Data.NutMeg.NutMeg
+instance GHC.Generics.Generic Data.NutMeg.NutMeg
 instance GHC.Show.Show Data.NutMeg.NutMeg
