@@ -10,23 +10,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Read Binary Nutmeg Data
-module Data.NutMeg ( NutMeg (..)
+module Data.NutMeg ( -- * Data Types
+                     NutMeg (..)
                    , NutPlot (..)
                    , NutWave (..)
                    , NutPlotType (..)
                    , NutField (..)
-                   , nutFieldName
-                   , bytesPerReal
-                   , bytesPerComplex
-                   , nutPlot, nutFlag, nutWave
-                   , nutRealWave, asRealVector
-                   , readRealBinary, readComplexBinary
-                   , concatComplexWaves, joinComplexWaves
-                   , nutComplexWave, asComplexVector
-                   , flattenRealPlots, flattenComplexPlots
+                   -- * Reading and Parsing Nutmeg Binary
+                   , readNutRaw, readNutRaw'
                    , parseNutPlot, parseNutPlots
                    , parseNutMeg, parseNutMeg'
-                   , readNutRaw, readNutRaw'
+                   -- * Misc
+                   , nutFieldName, nutPlot, nutFlag, nutWave
+                   -- * Waveform access
+                   , nutRealWave, asRealVector
+                   , nutComplexWave, asComplexVector
+                   -- * Read raw binary data
+                   , readRealBinary, readComplexBinary
+                   , concatComplexWaves, joinComplexWaves
+                   , flattenRealPlots, flattenComplexPlots
                    -- , encodeNutPlot
                    ) where
 
@@ -45,8 +47,8 @@ import qualified Data.ByteString.Lazy.Char8 as CL
 import qualified Data.Vector.Unboxed        as V
 
 -- | NutMeg wave form data dypes
-data NutWave = NutRealWave    {-# UNPACK #-} !(V.Vector Double)
-             | NutComplexWave {-# UNPACK #-} !(V.Vector (Complex Double))
+data NutWave = NutRealWave    {-# UNPACK #-} !(V.Vector Double)           -- ^ Real valued (Double) wave form
+             | NutComplexWave {-# UNPACK #-} !(V.Vector (Complex Double)) -- ^ Complex valued (Complex Double) wave form
     deriving (Show, Eq, Generic, NFData)
 
 -- | Convert a nut wave to either real or complex valued Vector
@@ -137,14 +139,14 @@ nutFlag "real"    = NutRealPlot
 nutFlag _         = undefined
 
 -- | Data Fields in NutMeg Files
-data NutField = NutTitle 
-              | NutDate 
-              | NutPlotname 
-              | NutFlags 
-              | NutNoVariables 
-              | NutNoPoints 
-              | NutVariables 
-              | NutBinData
+data NutField = NutTitle        -- ^ Title of the plot, usually first line of netlist
+              | NutDate         -- ^ Date of the plot
+              | NutPlotname     -- ^ Name of plot
+              | NutFlags        -- ^ Real or Complex
+              | NutNoVariables  -- ^ No. Variables
+              | NutNoPoints     -- ^ No. Points per Variable
+              | NutVariables    -- ^ String representation of Variables
+              | NutBinData      -- ^ Binary Data, Double or Complex Double in Big Endian
     deriving (Show, Eq, Enum, Ord, Bounded, Generic, NFData)
 
 -- Alternaitve Show instance calling `nutFieldName`.
@@ -167,26 +169,20 @@ nutFieldName NutBinData     = "Binary:"
 -- nutFieldName' = BL.fromStrict . nutFieldName
 
 -- | A 'plot' as it is represented within the NutMeg File format.
-data NutPlot = NutPlot { nutPlotName  :: !String
-                       , nutNumVars   :: !Int
-                       , nutNumPoints :: !Int
-                       , nutVariables :: ![String]
-                       , nutPlotType  :: !NutPlotType
-                       , nutData      :: !(M.Map String NutWave) }
---              | ComplexPlot { nutPlotName    :: String
---                            , nutNumVars     :: Int
---                            , nutNumPoints   :: Int
---                            , nutVariables   :: [String]
---                            , nutPlotType    :: NutPlotType
---                            , complexNutData :: !(M.Map String NutWave) }
-    deriving (Show, Generic, NFData)
+data NutPlot = NutPlot { nutPlotName  :: !String                    -- ^ Plot Name
+                       , nutNumVars   :: !Int                       -- ^ Number of Variables
+                       , nutNumPoints :: !Int                       -- ^ Number of data points per Variable
+                       , nutVariables :: ![String]                  -- ^ Names of Variables
+                       , nutPlotType  :: !NutPlotType               -- ^ Real or Complex
+                       , nutData      :: !(M.Map String NutWave)    -- ^ Waveforms
+                       } deriving (Show, Generic, NFData)
 
 -- | Representation of NutMeg file contents, where plot names are mapped to
 -- corresponding plot types and data.
-data NutMeg = NutMeg { nutTitle :: !String
-                     , nutDate  :: !String
-                     , nutPlots :: !(M.Map String NutPlot)}
-    deriving (Show, Generic, NFData)
+data NutMeg = NutMeg { nutTitle :: !String                  -- ^ Title of Plot
+                     , nutDate  :: !String                  -- ^ Data of Plot
+                     , nutPlots :: !(M.Map String NutPlot)  -- ^ Plots contained within
+                     } deriving (Show, Generic, NFData)
 
 -- | Convenient transformation to Int64 for certain calculations
 bytesPerReal :: Int64
@@ -195,10 +191,6 @@ bytesPerReal = 8
 -- | How many bytes per complex data point
 bytesPerComplex :: Int64
 bytesPerComplex = 2 * bytesPerReal
-
--- | Convenience function for reading a NutMeg File
-readNutRaw :: FilePath -> IO BL.ByteString
-readNutRaw = BL.readFile
 
 -- | Trim White spaces
 trim :: BL.ByteString -> BL.ByteString
@@ -269,14 +261,16 @@ parseNutPlot plt = nutPlot pn fl np nv vn dt
     np          = max 1 $ read (hf !! 3)
     dt          = BL.reverse . BL.drop 1 . BL.reverse . CL.unlines . drop 1 $ dat'
 
+-- | Parse all plots contained within a nutmeg file after title and date
 parseNutPlots :: [BL.ByteString] -> [NutPlot]
 parseNutPlots []  = []
 parseNutPlots bdy = parseNutPlot plt' : parseNutPlots bdy'
   where
     ph         = take 2 bdy
     (plt,rst') = break (BL.isPrefixOf (nutFieldName NutFlags)) $ drop 2 bdy
-    pt'   = map BL.pack $ splitOn (BL.unpack (nutFieldName NutPlotname)) $ BL.unpack (last plt)
-    nh         = BL.concat [nutFieldName NutPlotname, last plt']
+    pt'        = map BL.pack $ splitOn (BL.unpack (nutFieldName NutPlotname))
+               $ BL.unpack (last plt)
+    nh         = BL.concat [nutFieldName NutPlotname, last pt']
     plt'       = ph ++ init plt ++ [head pt']
     bdy'       = if null rst' || length pt' < 2 then [] else nh : rst'
 
@@ -286,8 +280,7 @@ parseNutMeg' (nt':nd':bdy') = (meg, off)
   where 
     nt   = readNutElement NutTitle nt'
     nd   = readNutElement NutDate  nd'
-    !nps = 
-        parseNutPlots bdy'
+    !nps = parseNutPlots bdy'
     !mps = M.fromList $! zip (map nutPlotName nps) nps
     !meg = NutMeg { nutTitle = nt
                   , nutDate  = nd
@@ -300,6 +293,11 @@ parseNutMeg' _ = error "Empty File or Wrong Format"
 parseNutMeg :: BL.ByteString -> NutMeg
 parseNutMeg = fst . parseNutMeg' . CL.lines
 
+-- | Convenience function for reading a NutMeg File
+readNutRaw :: FilePath -> IO BL.ByteString
+readNutRaw = BL.readFile
+
+-- | Read and Prase NutMeg
 readNutRaw' :: FilePath -> IO NutMeg
 readNutRaw' p = parseNutMeg <$> readNutRaw p
 

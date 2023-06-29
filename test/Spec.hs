@@ -23,7 +23,9 @@ import           Graphics.Vega.VegaLite             hiding (sample, shape)
 
 tranTest :: IO ()
 tranTest = do
-    !nut <- parseNutMeg <$> readNutRaw "./example/nutbin.raw"
+    !nut <- readNutRaw' "./example/nutbin.raw"
+
+    -- !nut <- parseNutMeg <$> readNutRaw "./example/nutbin.raw"
     let nutMap   = nutPlots nut
         Just plt = M.lookup (last $ M.keys nutMap) nutMap
         vm   = M.map asRealVector . nutData $ plt
