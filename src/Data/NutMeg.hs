@@ -126,10 +126,11 @@ flattenComplexPlots nps = let { nutPlotName  = pn'
     np' = nutNumPoints fp
     vn' = nutVariables fp
     pt' = nutPlotType fp
-    dt' = M.unionsWith joinRealWaves (map nutData nps)
+    dt' = M.unionsWith joinComplexWaves (map nutData nps)
 
 -- | Real and Complex NutMeg plots
-data NutPlotType = NutRealPlot | NutComplexPlot
+data NutPlotType = NutRealPlot      -- ^ Real Valued Nut Meg Plot
+                 | NutComplexPlot   -- ^ Complex Valued Nut Meg Plot
     deriving (Show, Eq, Generic, NFData)
 
 -- | Convert a flag from file to plot type
@@ -179,9 +180,9 @@ data NutPlot = NutPlot { nutPlotName  :: !String                    -- ^ Plot Na
 
 -- | Representation of NutMeg file contents, where plot names are mapped to
 -- corresponding plot types and data.
-data NutMeg = NutMeg { nutTitle :: !String                  -- ^ Title of Plot
-                     , nutDate  :: !String                  -- ^ Data of Plot
-                     , nutPlots :: !(M.Map String NutPlot)  -- ^ Plots contained within
+data NutMeg = NutMeg { nutTitle :: !String              -- ^ Title of Plot
+                     , nutDate  :: !String              -- ^ Data of Plot
+                     , nutPlots :: ![(String, NutPlot)] -- ^ Plots contained within
                      } deriving (Show, Generic, NFData)
 
 -- | Convenient transformation to Int64 for certain calculations
@@ -232,7 +233,7 @@ nutPlot pn nt np nv vn !bs = NutPlot { nutPlotName  = pn
                                      , nutData      = M.fromList $ zip vn dt }
   where 
     dt = if nt == NutRealPlot
-            then map (NutRealWave . V.fromList)    . transpose . chunksOf nv
+            then map (NutRealWave    . V.fromList) . transpose . chunksOf nv
                                                    $ readRealBinary bs
             else map (NutComplexWave . V.fromList) . transpose
                                      . chunksOf nv $ readComplexBinary bs
@@ -281,7 +282,7 @@ parseNutMeg' (nt':nd':bdy') = meg
     nt    = readNutElement NutTitle nt'
     nd    = readNutElement NutDate  nd'
     !nps  = parseNutPlots bdy'
-    !mps  = M.fromList $! zip (map nutPlotName nps) nps
+    !mps  = force $! zip (map nutPlotName nps) nps
     !meg  = NutMeg { nutTitle = nt
                    , nutDate  = nd
                    , nutPlots = mps }

@@ -5,7 +5,7 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.2.2.0
+@version 0.2.3.0
 
 
 -- | Read Binary Nutmeg Data
@@ -14,7 +14,7 @@ module Data.NutMeg
 -- | Representation of NutMeg file contents, where plot names are mapped to
 --   corresponding plot types and data.
 data NutMeg
-NutMeg :: !String -> !String -> !Map String NutPlot -> NutMeg
+NutMeg :: !String -> !String -> ![(String, NutPlot)] -> NutMeg
 
 -- | Title of Plot
 [nutTitle] :: NutMeg -> !String
@@ -23,7 +23,7 @@ NutMeg :: !String -> !String -> !Map String NutPlot -> NutMeg
 [nutDate] :: NutMeg -> !String
 
 -- | Plots contained within
-[nutPlots] :: NutMeg -> !Map String NutPlot
+[nutPlots] :: NutMeg -> ![(String, NutPlot)]
 
 -- | Convenient Transformer to Lazy ByteString nutFieldName' :: NutField
 --   -&gt; BL.ByteString nutFieldName' = BL.fromStrict . nutFieldName
@@ -61,7 +61,11 @@ NutComplexWave :: {-# UNPACK #-} !Vector (Complex Double) -> NutWave
 
 -- | Real and Complex NutMeg plots
 data NutPlotType
+
+-- | Real Valued Nut Meg Plot
 NutRealPlot :: NutPlotType
+
+-- | Complex Valued Nut Meg Plot
 NutComplexPlot :: NutPlotType
 
 -- | Data Fields in NutMeg Files

@@ -24,10 +24,10 @@ import           Graphics.Vega.VegaLite             hiding (sample, shape)
 tranTest :: IO ()
 tranTest = do
     !nut <- readNutRaw' "./example/nutbin.raw"
-
     -- !nut <- parseNutMeg <$> readNutRaw "./example/nutbin.raw"
-    let nutMap   = nutPlots nut
-        Just plt = M.lookup (last $ M.keys nutMap) nutMap
+
+    let tran = "Transient Analysis `tran': time = (0 s -> 5 ns)"
+        plt  = snd . head . L.filter ( (== tran) . fst ) $ nutPlots nut
         vm   = M.map asRealVector . nutData $ plt
 
         xParam = "time"
@@ -56,9 +56,7 @@ nmosTest  = do
     let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"
 
-    let nutMap = M.fromList [( "DC Analysis" , flattenRealPlots . M.elems . nutPlots $ nut )]
-        -- nut'   = NutMeg (nutTitle nut) (nutDate nut) nutMap
-        plt    = snd . head . M.toList $ nutMap -- . nutPlots $ nut'
+    let plt    = flattenRealPlots . map snd . nutPlots $ nut
         vm     = M.map asRealVector . nutData $ plt
         
         xParam = "M0:vgs"
