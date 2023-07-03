@@ -5,176 +5,125 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.2.3.0
+@version 0.3.0.0
 
 
--- | Read Binary Nutmeg Data
+-- | Read Binary NutMeg Data
 module Data.NutMeg
 
--- | Representation of NutMeg file contents, where plot names are mapped to
---   corresponding plot types and data.
-data NutMeg
-NutMeg :: !String -> !String -> ![(String, NutPlot)] -> NutMeg
+-- | A NutMeg file consists of a list of <tt><a>Plot</a></tt>s
+--   <tt>[(Plotname, </tt><a>Plot</a>@)] Plotnames do <i>not</i> have to be
+--   unique in a NutMeg file. Data may be lost by turning this into a
+--   <a>Map</a>.
+type NutMeg = [(String, Plot)]
 
--- | Title of Plot
-[nutTitle] :: NutMeg -> !String
+-- | A <i>Plot</i> inside a <tt><a>NutMeg</a></tt> file consists of
+--   uniquely identified waveforms: <tt>[(Variable Name, Waveform)]</tt>
+type Plot = Map String Wave
 
--- | Data of Plot
-[nutDate] :: NutMeg -> !String
+-- | Wrapper around Real or Complex valued Vector, so they can be in the
+--   same <tt>List</tt>.
+data Wave
 
--- | Plots contained within
-[nutPlots] :: NutMeg -> ![(String, NutPlot)]
+-- | Real valued (<a>Double</a>) wave form
+RealWave :: {-# UNPACK #-} !Vector Double -> Wave
 
--- | Convenient Transformer to Lazy ByteString nutFieldName' :: NutField
---   -&gt; BL.ByteString nutFieldName' = BL.fromStrict . nutFieldName
---   
---   A <tt>plot</tt> as it is represented within the NutMeg File format.
-data NutPlot
-NutPlot :: !String -> !Int -> !Int -> ![String] -> !NutPlotType -> !Map String NutWave -> NutPlot
+-- | Complex valued ('Complex Double') wave form
+ComplexWave :: {-# UNPACK #-} !Vector (Complex Double) -> Wave
 
--- | Plot Name
-[nutPlotName] :: NutPlot -> !String
+-- | Flag indicating whether a plot is real or complex valued
+data Flag
 
--- | Number of Variables
-[nutNumVars] :: NutPlot -> !Int
+-- | Real valued (<a>Double</a>) plot
+Real :: Flag
 
--- | Number of data points per Variable
-[nutNumPoints] :: NutPlot -> !Int
+-- | Complex valued ('Complex Double') plot
+Complex :: Flag
 
--- | Names of Variables
-[nutVariables] :: NutPlot -> ![String]
+-- | Data Field identifier in NutMeg (binary) Files
+data Field
 
--- | Real or Complex
-[nutPlotType] :: NutPlot -> !NutPlotType
+-- | Title of the <tt><a>NutMeg</a></tt> file, usually first line of
+--   netlist
+Title :: Field
 
--- | Waveforms
-[nutData] :: NutPlot -> !Map String NutWave
+-- | Date of creation
+Date :: Field
 
--- | NutMeg wave form data dypes
-data NutWave
+-- | Name of a <tt><a>Plot</a></tt>
+Plotname :: Field
 
--- | Real valued (Double) wave form
-NutRealWave :: {-# UNPACK #-} !Vector Double -> NutWave
+-- | Whether the <tt><a>Plot</a></tt> is <tt><a>Real</a></tt> or
+--   <tt><a>Complex</a></tt>
+Flags :: Field
 
--- | Complex valued (Complex Double) wave form
-NutComplexWave :: {-# UNPACK #-} !Vector (Complex Double) -> NutWave
-
--- | Real and Complex NutMeg plots
-data NutPlotType
-
--- | Real Valued Nut Meg Plot
-NutRealPlot :: NutPlotType
-
--- | Complex Valued Nut Meg Plot
-NutComplexPlot :: NutPlotType
-
--- | Data Fields in NutMeg Files
-data NutField
-
--- | Title of the plot, usually first line of netlist
-NutTitle :: NutField
-
--- | Date of the plot
-NutDate :: NutField
-
--- | Name of plot
-NutPlotname :: NutField
-
--- | Real or Complex
-NutFlags :: NutField
-
--- | No. Variables
-NutNoVariables :: NutField
+-- | No. Variables in the <tt><a>Plot</a></tt>
+NoVariables :: Field
 
 -- | No. Points per Variable
-NutNoPoints :: NutField
+NoPoints :: Field
 
--- | String representation of Variables
-NutVariables :: NutField
+-- | String representation of Variables in the <tt><a>Plot</a></tt>
+Variables :: Field
 
--- | Binary Data, Double or Complex Double in Big Endian
-NutBinData :: NutField
+-- | Binary Data, <a>Double</a> or 'Complex Double' encoded in Big Endian
+Binary :: Field
 
--- | Convenience function for reading a NutMeg File
-readNutRaw :: FilePath -> IO ByteString
+-- | Read a binary nutmeg .raw file
+readFile :: FilePath -> IO NutMeg
 
--- | Read and Prase NutMeg, ignoring file offset
-readNutRaw' :: FilePath -> IO NutMeg
+-- | Strict version of <tt><a>readFile</a></tt>
+readFile' :: FilePath -> IO NutMeg
 
--- | Read and Prase NutMeg, considering file offset
-readNutRawWithOffset' :: Int -> FilePath -> IO (NutMeg, Int)
+-- | Read all <tt><a>Plot</a></tt>s encountered in a ByteString
+slurp :: ByteString -> NutMeg
 
--- | Returns a NutPlot for a given ByteString segment.
-parseNutPlot :: [ByteString] -> NutPlot
+-- | Read The first plot encountered in ByteString String: <tt>((Plotname,
+--   <a>Plot</a>), Remianing ByteString)</tt>
+extractPlot :: ByteString -> ((String, Plot), ByteString)
 
--- | Parse all plots contained within a nutmeg file after title and date
-parseNutPlots :: [ByteString] -> [NutPlot]
+-- | Extract the wave forms from binary data given header information
+extractPlot' :: Flag -> Int -> Int -> ByteString -> [Wave]
 
--- | Parse Nutmeg content
-parseNutMeg :: Int -> ByteString -> (NutMeg, Int)
+-- | Extract <tt><a>Plot</a></tt> header information: <tt>((Plotname,
+--   <a>Flag</a>, No. Variables, No. Points), [Variable Names])</tt>
+parseHeader :: [ByteString] -> ((String, Flag, Int, Int), [String])
 
--- | Parse nutmeg content with offset and return new offset
-parseNutMeg' :: [ByteString] -> NutMeg
+-- | Read a <tt><a>NutMeg</a></tt> field from a ByteString
+readField :: Field -> ByteString -> String
 
--- | Translate fieldname to ByteString representation in NutMeg file.
-nutFieldName :: NutField -> ByteString
+-- | Convert Waveform to unboxed <a>Vector</a>
+asVector :: Unbox a => Wave -> Vector a
 
--- | Construct NutPlot type
-nutPlot :: String -> NutPlotType -> Int -> Int -> [String] -> ByteString -> NutPlot
+-- | Concatenate the <tt><a>Wave</a></tt>s of a given list of
+--   <tt><a>Plot</a></tt> names. This will only work if the keys line up.
+flattenPlots :: [String] -> NutMeg -> Plot
 
--- | Convert a flag from file to plot type
-nutFlag :: String -> NutPlotType
+-- | Concatenate waves of all <tt><a>Plot</a></tt>s in
+--   <tt><a>NutMeg</a></tt>. Probably won't work as intended when variable
+--   names of the <tt><a>Plot</a></tt>s don't line up
+flattenPlots' :: NutMeg -> Plot
 
--- | Convert a nut wave to either real or complex valued Vector
-nutWave :: NutWave -> Either (Vector (Complex Double)) (Vector Double)
+-- | Transpose Rows / Columns
+r2c :: Unbox a => Int -> Int -> Vector a -> [Vector a]
 
--- | Convert a nut wave to a Real valued Vector
-nutRealWave :: NutWave -> Maybe (Vector Double)
-
--- | Convert a nut wave to a Real valued Vector
-asRealVector :: NutWave -> Vector Double
-
--- | Convert to Complex valued Vector
-nutComplexWave :: NutWave -> Maybe (Vector (Complex Double))
-
--- | Convert to Complex valued Vector
-asComplexVector :: NutWave -> Vector (Complex Double)
-
--- | Read block of real data
-readRealBinary :: ByteString -> [Double]
-
--- | Read block of complex data
-readComplexBinary :: ByteString -> [Complex Double]
-
--- | Concatenate complex nut waves
-concatComplexWaves :: [NutWave] -> NutWave
-
--- | Convenience for zipping complex waves
-joinComplexWaves :: NutWave -> NutWave -> NutWave
-
--- | Concatenate Data of plots with same variable names
-flattenRealPlots :: [NutPlot] -> NutPlot
-
--- | Flatten plots with same variable names
-flattenComplexPlots :: [NutPlot] -> NutPlot
-instance Control.DeepSeq.NFData Data.NutMeg.NutWave
-instance GHC.Generics.Generic Data.NutMeg.NutWave
-instance GHC.Classes.Eq Data.NutMeg.NutWave
-instance GHC.Show.Show Data.NutMeg.NutWave
-instance Control.DeepSeq.NFData Data.NutMeg.NutPlotType
-instance GHC.Generics.Generic Data.NutMeg.NutPlotType
-instance GHC.Classes.Eq Data.NutMeg.NutPlotType
-instance GHC.Show.Show Data.NutMeg.NutPlotType
-instance Control.DeepSeq.NFData Data.NutMeg.NutField
-instance GHC.Generics.Generic Data.NutMeg.NutField
-instance GHC.Enum.Bounded Data.NutMeg.NutField
-instance GHC.Classes.Ord Data.NutMeg.NutField
-instance GHC.Enum.Enum Data.NutMeg.NutField
-instance GHC.Classes.Eq Data.NutMeg.NutField
-instance GHC.Show.Show Data.NutMeg.NutField
-instance Control.DeepSeq.NFData Data.NutMeg.NutPlot
-instance GHC.Generics.Generic Data.NutMeg.NutPlot
-instance GHC.Show.Show Data.NutMeg.NutPlot
-instance Control.DeepSeq.NFData Data.NutMeg.NutMeg
-instance GHC.Generics.Generic Data.NutMeg.NutMeg
-instance GHC.Show.Show Data.NutMeg.NutMeg
+-- | Joins two <tt><a>Wave</a></tt>s of the same type: <tt>wave1 ++
+--   wave2</tt> Attempting to concatenate a Real and Complex wave will
+--   result in an error
+concat :: Wave -> Wave -> Wave
+instance Control.DeepSeq.NFData Data.NutMeg.Field
+instance GHC.Generics.Generic Data.NutMeg.Field
+instance GHC.Enum.Bounded Data.NutMeg.Field
+instance GHC.Classes.Ord Data.NutMeg.Field
+instance GHC.Enum.Enum Data.NutMeg.Field
+instance GHC.Classes.Eq Data.NutMeg.Field
+instance GHC.Generics.Generic Data.NutMeg.Flag
+instance GHC.Enum.Bounded Data.NutMeg.Flag
+instance GHC.Classes.Eq Data.NutMeg.Flag
+instance Control.DeepSeq.NFData Data.NutMeg.Wave
+instance GHC.Generics.Generic Data.NutMeg.Wave
+instance GHC.Classes.Eq Data.NutMeg.Wave
+instance GHC.Show.Show Data.NutMeg.Wave
+instance GHC.Read.Read Data.NutMeg.Flag
+instance GHC.Show.Show Data.NutMeg.Flag
+instance GHC.Show.Show Data.NutMeg.Field

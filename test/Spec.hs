@@ -1,16 +1,18 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Main where
 
-import           Data.NutMeg
+import qualified Data.NutMeg                 as N
 
-import           Control.DeepSeq
+-- import           Control.DeepSeq
 import           Control.Scheduler
 import           System.Clock
 import qualified Data.Binary.Get             as B
+import           Data.Complex
 import           Data.Function                       (on)
 import           Data.Maybe                          (fromJust, mapMaybe)
 import qualified Data.Map                    as M
@@ -18,17 +20,21 @@ import qualified Data.List                   as L
 import qualified Data.Vector.Unboxed         as V
 import qualified Data.ByteString.Lazy        as BL
 import qualified Data.ByteString.Lazy.Char8  as CL
+
+import           Data.ByteString.Internal         (c2w, w2c, isSpaceWord8)
+import GHC.Word
+
 import qualified Data.Text                   as T
 import           Graphics.Vega.VegaLite             hiding (sample, shape)
 
+
 tranTest :: IO ()
 tranTest = do
-    !nut <- readNutRaw' "./example/nutbin.raw"
-    -- !nut <- parseNutMeg <$> readNutRaw "./example/nutbin.raw"
+    !nut <- N.readFile' "./example/nutbin.raw"
 
     let tran = "Transient Analysis `tran': time = (0 s -> 5 ns)"
-        plt  = snd . head . L.filter ( (== tran) . fst ) $ nutPlots nut
-        vm   = M.map asRealVector . nutData $ plt
+        plt  = fromJust $ L.lookup tran  nut
+        vm   = M.map N.asVector plt
 
         xParam = "time"
         yParam = "O"
@@ -42,26 +48,26 @@ nmosTest :: IO ()
 nmosTest  = do
 
     !tic <- getTime Realtime
-    !nut <- readNutRaw' "./example/nutmos.raw"
+    !nut <- N.readFile' "./example/nutmos.raw"
+    -- !bar <- N.readFile' "/home/uhlmanny/Workspace/primitive-device-characterization/netlist/xt018-nmos.raw"
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
     putStrLn $ "1x : " ++ show td ++ "s"
 
-    let n = 5
+    let n = 10
     !tic' <- getTime Realtime
-    -- !nut' <- traverseConcurrently Par' (fmap parseNutMeg . readNutRaw)
-    --             $ replicate n "./example/nutmos.raw"
-    !nut' <- replicateConcurrently Par' n (readNutRaw' "./example/nutmos.raw")
+    !nut' <- traverseConcurrently Par' N.readFile' $ replicate n "./example/nutmos.raw"
+    -- !bar' <- traverseConcurrently Par' N.readFile'
+    --         $ replicate n "/home/uhlmanny/Workspace/primitive-device-characterization/netlist/xt018-nmos.raw"
     !toc' <- getTime Realtime
     let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"
 
-    let plt    = flattenRealPlots . map snd . nutPlots $ nut
-        vm     = M.map asRealVector . nutData $ plt
-        
+    let plt    = N.flattenPlots' nut
+        vm     = M.map N.asVector plt
         xParam = "M0:vgs"
         yParam = "M0:id"
-        td = traceData vm xParam yParam
+        td     = traceData vm xParam yParam
 
     putStrLn $ "Plotting " ++ (show . length $ td ) ++ " data points."
     plotNut "./example/nutmos.html" "Vgs (V)" "Id (A)" td 
