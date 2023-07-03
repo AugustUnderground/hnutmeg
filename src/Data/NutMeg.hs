@@ -10,22 +10,23 @@
 
 -- | Read Binary NutMeg Data
 module Data.NutMeg ( -- * Data Types
-                     NutMeg, Plot, Wave (..), Flag (..), Field (..)
+                     NutMeg, Plot, RealPlot, ComplexPlot, Wave (..), Flag (..), Field (..)
                    -- * Read raw binary data
                    , readFile, readFile', slurp
                    -- * Parsing NutMeg binary data
                    , extractPlot, extractPlot', parseHeader, readField
                    -- * Accessing Plot data
-                   , asVector, flattenPlots, flattenPlots'
+                   , asVector, vectorize, flattenPlots, flattenPlots'
+                   , asRealPlot, asComplexPlot
                    -- * Utilities
-                   , r2c, concat
+                   , r2c, concat, isReal, isComplex, isReal', isComplex'
                    ) where
 
 import           GHC.Generics
-import           Unsafe.Coerce                    (unsafeCoerce)
 import           Control.Monad
 import           Control.DeepSeq
 import           Data.Int                         (Int64)
+import           Data.Either
 import           Data.Maybe                       (fromJust)
 import           Data.Complex
 import           Data.ByteString.Lazy             (ByteString)
@@ -83,7 +84,13 @@ data Wave = RealWave    {-# UNPACK #-} !(Vector Double)           -- ^ Real valu
 
 -- | A /Plot/ inside a @'NutMeg'@ file consists of uniquely identified waveforms:
 -- @[(Variable Name, Waveform)]@
-type Plot = Map String Wave
+type Plot        = Map String Wave
+
+-- | Type alias for real valued @'Plot'@
+type RealPlot    = Map String (Vector Double)
+
+-- | Type alias for complex valued @'Plot'@
+type ComplexPlot = Map String (Vector (Complex Double))
 
 -- | A NutMeg file consists of a list of @'Plot'@s
 -- @[(Plotname, @'Plot'@)]
@@ -102,15 +109,54 @@ r2c numVars numPoints wave' = waves
     r2c' v = V.fromList $ map ((wave' !) . (+ v)) [0, numVars .. numPoints * 2 - 1]
     waves  = map r2c' [0 .. numVars - 1]
 
--- | Convert Waveform to unboxed 'Vector'
-asVector :: (Unbox a) => Wave -> Vector a
-asVector (ComplexWave w) = unsafeCoerce w
-asVector (RealWave w)    = unsafeCoerce w
+-- | Check whether waveform is real valued
+isReal' :: Wave -> Bool
+isReal' (RealWave _) = True
+isReal' _            = False
+
+-- | Check whether waveform is complex valued
+isComplex' :: Wave -> Bool
+isComplex' = not . isReal'
+
+-- | Check whether Plot is real valued
+isReal :: Plot -> Bool
+isReal = all isReal' . M.elems
+
+-- | Check whether Plot is complex valued
+isComplex :: Plot -> Bool
+isComplex = not . isReal
+
+-- | Convert Waveform to unboxed 'Vector', fails horribly if types are incorrect
+asVector :: Wave -> Either (Vector (Complex Double)) (Vector Double)
+asVector (RealWave    w) = Right w
+asVector (ComplexWave w) = Left  w
+
+-- | Get rid of @'Wave'@ type and convert to either 'Complex Double' or
+-- 'Double' Vector, depending on Wave type.
+vectorize :: Plot -> Either ComplexPlot RealPlot
+vectorize p | M.null complexPlots = Right realPlots
+            | otherwise           = Left complexPlots
+  where
+    (complexPlots, realPlots) = M.mapEither asVector p
+
+-- | Unsafe extraction of 'Right' value for real valued plots. Check with
+-- @'isReal'@ before using, to be sure
+asRealPlot :: Plot -> RealPlot
+asRealPlot plot = plot'
+  where
+    (Right plot') = vectorize plot
+
+-- | Unsafe extraction of 'Left' value for complex valued plots. Check with
+-- @'isComplex'@ before using, to be sure
+asComplexPlot :: Plot -> ComplexPlot
+asComplexPlot plot = plot'
+  where
+    (Left plot') = vectorize plot
 
 -- | Joins two @'Wave'@s of the same type: @wave1 ++ wave2@
 -- Attempting to concatenate a Real and Complex wave will result in an error
 concat :: Wave -> Wave -> Wave
-concat (RealWave a)    (RealWave b)    = RealWave    (a ++ b)
+concat (RealWave    a) (RealWave    b) = RealWave    (a ++ b)
 concat (ComplexWave a) (ComplexWave b) = ComplexWave (a ++ b)
 concat _               _               = error "Cannot concatenate Real and Complex Waves"
 

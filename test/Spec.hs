@@ -33,8 +33,7 @@ tranTest = do
     !nut <- N.readFile' "./example/nutbin.raw"
 
     let tran = "Transient Analysis `tran': time = (0 s -> 5 ns)"
-        plt  = fromJust $ L.lookup tran  nut
-        vm   = M.map N.asVector plt
+        vm  = N.asRealPlot . fromJust $ L.lookup tran  nut
 
         xParam = "time"
         yParam = "O"
@@ -64,7 +63,7 @@ nmosTest  = do
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"
 
     let plt    = N.flattenPlots' nut
-        vm     = M.map N.asVector plt
+        vm     = N.asRealPlot plt
         xParam = "M0:vgs"
         yParam = "M0:id"
         td     = traceData vm xParam yParam

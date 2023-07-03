@@ -5,7 +5,7 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.3.0.0
+@version 0.3.1.0
 
 
 -- | Read Binary NutMeg Data
@@ -20,6 +20,12 @@ type NutMeg = [(String, Plot)]
 -- | A <i>Plot</i> inside a <tt><a>NutMeg</a></tt> file consists of
 --   uniquely identified waveforms: <tt>[(Variable Name, Waveform)]</tt>
 type Plot = Map String Wave
+
+-- | Type alias for real valued <tt><a>Plot</a></tt>
+type RealPlot = Map String (Vector Double)
+
+-- | Type alias for complex valued <tt><a>Plot</a></tt>
+type ComplexPlot = Map String (Vector (Complex Double))
 
 -- | Wrapper around Real or Complex valued Vector, so they can be in the
 --   same <tt>List</tt>.
@@ -92,8 +98,13 @@ parseHeader :: [ByteString] -> ((String, Flag, Int, Int), [String])
 -- | Read a <tt><a>NutMeg</a></tt> field from a ByteString
 readField :: Field -> ByteString -> String
 
--- | Convert Waveform to unboxed <a>Vector</a>
-asVector :: Unbox a => Wave -> Vector a
+-- | Convert Waveform to unboxed <a>Vector</a>, fails horribly if types are
+--   incorrect
+asVector :: Wave -> Either (Vector (Complex Double)) (Vector Double)
+
+-- | Get rid of <tt><a>Wave</a></tt> type and convert to either 'Complex
+--   Double' or <a>Double</a> Vector, depending on Wave type.
+vectorize :: Plot -> Either ComplexPlot RealPlot
 
 -- | Concatenate the <tt><a>Wave</a></tt>s of a given list of
 --   <tt><a>Plot</a></tt> names. This will only work if the keys line up.
@@ -104,6 +115,14 @@ flattenPlots :: [String] -> NutMeg -> Plot
 --   names of the <tt><a>Plot</a></tt>s don't line up
 flattenPlots' :: NutMeg -> Plot
 
+-- | Unsafe extraction of <a>Right</a> value for real valued plots. Check
+--   with <tt><a>isReal</a></tt> before using, to be sure
+asRealPlot :: Plot -> RealPlot
+
+-- | Unsafe extraction of <a>Left</a> value for complex valued plots. Check
+--   with <tt><a>isComplex</a></tt> before using, to be sure
+asComplexPlot :: Plot -> ComplexPlot
+
 -- | Transpose Rows / Columns
 r2c :: Unbox a => Int -> Int -> Vector a -> [Vector a]
 
@@ -111,6 +130,18 @@ r2c :: Unbox a => Int -> Int -> Vector a -> [Vector a]
 --   wave2</tt> Attempting to concatenate a Real and Complex wave will
 --   result in an error
 concat :: Wave -> Wave -> Wave
+
+-- | Check whether Plot is real valued
+isReal :: Plot -> Bool
+
+-- | Check whether Plot is complex valued
+isComplex :: Plot -> Bool
+
+-- | Check whether waveform is real valued
+isReal' :: Wave -> Bool
+
+-- | Check whether waveform is complex valued
+isComplex' :: Wave -> Bool
 instance Control.DeepSeq.NFData Data.NutMeg.Field
 instance GHC.Generics.Generic Data.NutMeg.Field
 instance GHC.Enum.Bounded Data.NutMeg.Field
