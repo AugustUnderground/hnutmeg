@@ -182,7 +182,10 @@ parseHeader :: [ByteString] -> ((String, Flag, Int, Int),  [String])
 parseHeader hdr = (h, var')
   where
     hdr' = zipWith readField [ Plotname .. NoPoints ] hdr
-    h    = (head hdr', read (hdr' !! 1) , read (hdr' !! 2) , read (hdr' !! 3))
+    h    = ( head hdr'
+           , read (hdr' !! 1)
+           , max 1 $ read (hdr' !! 2)
+           , max 1 $ read (hdr' !! 3) )
     vars = BL.cons (c2w '\t')
                    (fromJust (BL.stripPrefix (CL.pack $ show Variables) (hdr !! 4)))
          : drop 5 hdr

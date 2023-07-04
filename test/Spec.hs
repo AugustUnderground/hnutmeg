@@ -47,6 +47,7 @@ nmosTest :: IO ()
 nmosTest  = do
     -- !nut <- N.readFile' "./example/nutmos.raw"
     -- !nut <- N.readFile' "/tmp/uhlmanny-sym-xt018-5252811c109ec705/hspectre.raw"
+    -- !nut <- N.readFile' "/tmp/uhlmanny-sym-xt018-c6f1b33f1fc745e6/hspectre.raw"
 
     !tic <- getTime Realtime
     -- !foo <- N.readFile' "/home/uhlmanny/Workspace/TRASH/nut/a/hspectre.raw"
