@@ -106,7 +106,7 @@ bytesPerReal = 8
 r2c :: (Unbox a) => Int -> Int -> Vector a -> [Vector a]
 r2c numVars numPoints wave' = waves
   where
-    r2c' v = V.fromList $ map ((wave' !) . (+ v)) [0, numVars .. numPoints * 2 - 1]
+    r2c' v = V.fromList $ map ((wave' !) . (+ v)) [0, numVars .. numPoints * numVars - 1]
     waves  = map r2c' [0 .. numVars - 1]
 
 -- | Check whether waveform is real valued
@@ -198,8 +198,7 @@ extractPlot' :: Flag       -- ^ Real or Complex Data
              -> [Wave]     -- ^ Wave forms
 extractPlot' Real    numVars numPoints bin = waves
   where
-    wave' = V.generate (numVars * numPoints) 
-          $ \i -> runGet getDoublebe $ BL.drop (fromIntegral i * bytesPerReal) bin
+    wave' = V.generate (numVars * numPoints) $ \i -> runGet getDoublebe $ BL.drop (fromIntegral i * bytesPerReal) bin
     waves = map RealWave $ r2c numVars numPoints wave'
 extractPlot' Complex numVars numPoints bin = waves
   where
@@ -217,7 +216,8 @@ extractPlot bs = ((plotName, plot) , rest)
   where
     hdr   = takeWhile (not . BL.isPrefixOf "Binary:") $ CL.lines bs
     ((plotName, flag, numVars, numPoints), varNames) = parseHeader hdr
-    n     = sum (map BL.length hdr) + 8 + fromIntegral (length hdr)
+    n     = (+8) . BL.length $ CL.unlines hdr 
+    -- sum (map BL.length hdr) + 8 + fromIntegral (length hdr)
     b     = if flag == Real then bytesPerReal else 2 * bytesPerReal
     n'    = (b *) . fromIntegral $ numVars * numPoints
     bin   = BL.take n' $ BL.drop n bs

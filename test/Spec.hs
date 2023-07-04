@@ -45,9 +45,11 @@ tranTest = do
 
 nmosTest :: IO ()
 nmosTest  = do
+    -- !nut <- N.readFile' "./example/nutmos.raw"
+    -- !nut <- N.readFile' "/tmp/uhlmanny-sym-xt018-5252811c109ec705/hspectre.raw"
 
     !tic <- getTime Realtime
-    -- !nut <- N.readFile' "/home/uhlmanny/Workspace/TRASH/nut/a/hspectre.raw"
+    -- !foo <- N.readFile' "/home/uhlmanny/Workspace/TRASH/nut/a/hspectre.raw"
     !nut <- N.readFile' "./example/nutmos.raw"
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
