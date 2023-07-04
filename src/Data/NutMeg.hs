@@ -215,13 +215,14 @@ extractPlot' Complex numVars numPoints bin = waves
 extractPlot :: ByteString -> ((String, Plot), ByteString)
 extractPlot bs = ((plotName, plot) , rest)
   where
-    hdr  = takeWhile (not . BL.isPrefixOf "Binary:") $ CL.lines bs
+    hdr   = takeWhile (not . BL.isPrefixOf "Binary:") $ CL.lines bs
     ((plotName, flag, numVars, numPoints), varNames) = parseHeader hdr
-    n    = sum (map BL.length hdr) + 8 + fromIntegral (length hdr)
-    n'   = fromIntegral $ numVars * numPoints * 8
-    bin  = BL.drop n bs
+    n     = sum (map BL.length hdr) + 8 + fromIntegral (length hdr)
+    b     = if flag == Real then bytesPerReal else 2 * bytesPerReal
+    n'    = (b *) . fromIntegral $ numVars * numPoints
+    bin   = BL.take n' $ BL.drop n bs
     !plot = M.fromList . zip varNames $! extractPlot' flag numVars numPoints bin
-    !rest = BL.drop n' bs
+    !rest = BL.drop (n + n') bs
 
 -- | Read all @'Plot'@s encountered in a ByteString
 slurp :: ByteString -> NutMeg

@@ -9,6 +9,7 @@ module Main where
 import qualified Data.NutMeg                 as N
 
 -- import           Control.DeepSeq
+import           Control.Monad
 import           Control.Scheduler
 import           System.Clock
 import qualified Data.Binary.Get             as B
@@ -26,7 +27,6 @@ import GHC.Word
 
 import qualified Data.Text                   as T
 import           Graphics.Vega.VegaLite             hiding (sample, shape)
-
 
 tranTest :: IO ()
 tranTest = do
@@ -47,8 +47,8 @@ nmosTest :: IO ()
 nmosTest  = do
 
     !tic <- getTime Realtime
+    -- !nut <- N.readFile' "/home/uhlmanny/Workspace/TRASH/nut/a/hspectre.raw"
     !nut <- N.readFile' "./example/nutmos.raw"
-    -- !bar <- N.readFile' "/home/uhlmanny/Workspace/primitive-device-characterization/netlist/xt018-nmos.raw"
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
     putStrLn $ "1x : " ++ show td ++ "s"
@@ -56,8 +56,7 @@ nmosTest  = do
     let n = 10
     !tic' <- getTime Realtime
     !nut' <- traverseConcurrently Par' N.readFile' $ replicate n "./example/nutmos.raw"
-    -- !bar' <- traverseConcurrently Par' N.readFile'
-    --         $ replicate n "/home/uhlmanny/Workspace/primitive-device-characterization/netlist/xt018-nmos.raw"
+    -- !bar <- traverseConcurrently Par' N.readFile' $ [ "/home/uhlmanny/Workspace/TRASH/nut/" ++ (d : "/hspectre.raw") | d <- ['a' .. 'j']]
     !toc' <- getTime Realtime
     let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"

@@ -5,7 +5,7 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.3.1.0
+@version 0.3.2.0
 
 
 -- | Read Binary NutMeg Data
