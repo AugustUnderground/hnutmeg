@@ -12,9 +12,9 @@
 module Data.NutMeg ( -- * Data Types
                      NutMeg, Plot, RealPlot, ComplexPlot, Wave (..), Flag (..), Field (..)
                    -- * Read raw binary data
-                   , readFile, readFile', slurp
+                   , readFile
                    -- * Parsing NutMeg binary data
-                   , extractPlot, extractPlot', parseHeader, readField
+                   , extractPlots, extractPlot, parseHeader, readField
                    -- * Accessing Plot data
                    , asVector, vectorize, flattenPlots, flattenPlots'
                    , asRealPlot, asComplexPlot
@@ -23,8 +23,8 @@ module Data.NutMeg ( -- * Data Types
                    ) where
 
 import           GHC.Generics
-import           Control.Monad
 import           Control.DeepSeq
+import           Control.Monad                    ((<$!>))
 import           Data.Int                         (Int64)
 import           Data.Either
 import           Data.Maybe                       (fromJust)
@@ -65,7 +65,7 @@ instance Show Field where
 -- | Flag indicating whether a plot is real or complex valued
 data Flag = Real    -- ^ Real valued ('Double') plot
           | Complex -- ^ Complex valued ('Complex Double') plot
-    deriving (Eq, Bounded, Generic)
+    deriving (Eq, Bounded, Generic, NFData)
 
 instance Read Flag where
   readsPrec _ "real"    = [(Real, "")]
@@ -76,8 +76,8 @@ instance Show Flag where
   show Real    = "real"
   show Complex = "complex"
 
--- | Wrapper around Real or Complex valued Vector, so they can be in the same
--- 'List'.
+-- | Wrapper around Real or Complex valued Vector, so they can be stored in the
+-- same List.
 data Wave = RealWave    {-# UNPACK #-} !(Vector Double)           -- ^ Real valued ('Double') wave form
           | ComplexWave {-# UNPACK #-} !(Vector (Complex Double)) -- ^ Complex valued ('Complex Double') wave form
     deriving (Show, Eq, Generic, NFData)
@@ -194,50 +194,42 @@ parseHeader hdr = (h, var')
          . BL.elemIndices (c2w '\t') $ s) s
 
 -- | Extract the wave forms from binary data given header information
-extractPlot' :: Flag       -- ^ Real or Complex Data
+extractPlot :: Flag       -- ^ Real or Complex Data
              -> Int        -- ^ No. Variables
              -> Int        -- ^ No. Points
              -> ByteString -- ^ Binary Data
              -> [Wave]     -- ^ Wave forms
-extractPlot' Real    numVars numPoints bin = waves
+extractPlot Real    numVars numPoints bin = seq wave' waves
   where
-    wave' = V.generate (numVars * numPoints) $ \i -> runGet getDoublebe $ BL.drop (fromIntegral i * bytesPerReal) bin
-    waves = map RealWave $ r2c numVars numPoints wave'
-extractPlot' Complex numVars numPoints bin = waves
+    !wave' = V.generate (numVars * numPoints)
+           $ \i -> runGet getDoublebe $ BL.drop (fromIntegral i * bytesPerReal) bin
+    !waves = map RealWave $ r2c numVars numPoints wave'
+extractPlot Complex numVars numPoints bin = seq wave' waves
   where
-    wave' = V.generate (numVars * numPoints)
+    !wave' = V.generate (numVars * numPoints)
           $ \i -> let i'   = fromIntegral $ i * 2
                       real = runGet getDoublebe $ BL.drop (i' * bytesPerReal) bin
                       imag = runGet getDoublebe $ BL.drop ((i' + 1) * bytesPerReal) bin
                    in (real:+imag)
-    waves = map ComplexWave $ r2c numVars numPoints wave'
+    !waves = map ComplexWave $ r2c numVars numPoints wave'
 
 -- | Read The first plot encountered in ByteString String:
 -- @((Plotname, 'Plot'), Remianing ByteString)@
-extractPlot :: ByteString -> ((String, Plot), ByteString)
-extractPlot bs = ((plotName, plot) , rest)
+extractPlots :: ByteString -> NutMeg
+extractPlots bs | BL.isPrefixOf "Plotname:" bs = (plotName, plot) : extractPlots rest
+                | otherwise                    = []
   where
     hdr   = takeWhile (not . BL.isPrefixOf "Binary:") $ CL.lines bs
     ((plotName, flag, numVars, numPoints), varNames) = parseHeader hdr
     n     = (+8) . BL.length $ CL.unlines hdr 
-    -- sum (map BL.length hdr) + 8 + fromIntegral (length hdr)
     b     = if flag == Real then bytesPerReal else 2 * bytesPerReal
     n'    = (b *) . fromIntegral $ numVars * numPoints
     bin   = BL.take n' $ BL.drop n bs
-    !plot = M.fromList . zip varNames $! extractPlot' flag numVars numPoints bin
-    !rest = BL.drop (n + n') bs
-
--- | Read all @'Plot'@s encountered in a ByteString
-slurp :: ByteString -> NutMeg
-slurp !bs | BL.null bs                   = []
-          | BL.isPrefixOf "Plotname:" bs = let (plot, rest) = extractPlot bs
-                                            in plot : slurp rest
-          | otherwise                    = slurp $ BL.drop 1 bs
+    plot  = M.fromList . zip varNames $! extractPlot flag numVars numPoints bin
+    rest  = BL.drop (n + n') bs
 
 -- | Read a binary nutmeg .raw file
 readFile :: FilePath -> IO NutMeg
-readFile path = slurp . CL.unlines . drop 2 . CL.lines <$!> BL.readFile path
-
--- | Strict version of @'readFile'@
-readFile' :: FilePath -> IO NutMeg
-readFile' path = force <$> readFile path
+readFile path = do
+    !plots <- extractPlots . CL.unlines . drop 2 . CL.lines <$!> BL.readFile path
+    pure . seq plots $ reverse plots

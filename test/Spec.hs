@@ -8,7 +8,7 @@ module Main where
 
 import qualified Data.NutMeg                 as N
 
--- import           Control.DeepSeq
+import           Control.DeepSeq
 import           Control.Monad
 import           Control.Scheduler
 import           System.Clock
@@ -28,9 +28,16 @@ import GHC.Word
 import qualified Data.Text                   as T
 import           Graphics.Vega.VegaLite             hiding (sample, shape)
 
+
+-- !bs' <- BL.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
+-- let bs = CL.unlines . drop 2 $ CL.lines bs'
+--     plots = extractPlots bs
+-- 
+-- !nut <- force <$!!> N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
+
 tranTest :: IO ()
 tranTest = do
-    !nut <- N.readFile' "./example/nutbin.raw"
+    !nut <- N.readFile "./example/nutbin.raw"
 
     let tran = "Transient Analysis `tran': time = (0 s -> 5 ns)"
         vm  = N.asRealPlot . fromJust $ L.lookup tran  nut
@@ -45,21 +52,23 @@ tranTest = do
 
 nmosTest :: IO ()
 nmosTest  = do
-    -- !nut <- N.readFile' "./example/nutmos.raw"
-    -- !nut <- N.readFile' "/tmp/uhlmanny-sym-xt018-5252811c109ec705/hspectre.raw"
-    -- !nut <- N.readFile' "/tmp/uhlmanny-sym-xt018-c6f1b33f1fc745e6/hspectre.raw"
+    -- !nut <- N.readFile "./example/nutmos.raw"
+    -- !nut <- N.readFile "/tmp/uhlmanny-sym-xt018-5252811c109ec705/hspectre.raw"
+    -- !nut <- N.readFile "/tmp/uhlmanny-sym-xt018-c6f1b33f1fc745e6/hspectre.raw"
 
     !tic <- getTime Realtime
-    -- !foo <- N.readFile' "/home/uhlmanny/Workspace/TRASH/nut/a/hspectre.raw"
-    !nut <- N.readFile' "./example/nutmos.raw"
+    -- !foo <- N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
+    !nut <- N.readFile "./example/nutmos.raw"
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
     putStrLn $ "1x : " ++ show td ++ "s"
 
     let n = 10
     !tic' <- getTime Realtime
-    !nut' <- traverseConcurrently Par' N.readFile' $ replicate n "./example/nutmos.raw"
-    -- !bar <- traverseConcurrently Par' N.readFile' $ [ "/home/uhlmanny/Workspace/TRASH/nut/" ++ (d : "/hspectre.raw") | d <- ['a' .. 'j']]
+    !nut' <- traverseConcurrently Par' N.readFile $ replicate n "./example/nutmos.raw"
+    -- !bar <- traverseConcurrently Par' N.readFile $ [ "/home/uhlmanny/Workspace/TRASH/nut/" ++ (d : "/hspectre.raw") | d <- ['a' .. 'j']]
+    -- !bar <- replicateConcurrently Par' n (N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw")
+    -- !bar <- replicateM n $ N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
     !toc' <- getTime Realtime
     let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"

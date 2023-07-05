@@ -5,7 +5,7 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.3.4.0
+@version 0.3.5.0
 
 
 -- | Read Binary NutMeg Data
@@ -27,8 +27,8 @@ type RealPlot = Map String (Vector Double)
 -- | Type alias for complex valued <tt><a>Plot</a></tt>
 type ComplexPlot = Map String (Vector (Complex Double))
 
--- | Wrapper around Real or Complex valued Vector, so they can be in the
---   same <tt>List</tt>.
+-- | Wrapper around Real or Complex valued Vector, so they can be stored in
+--   the same List.
 data Wave
 
 -- | Real valued (<a>Double</a>) wave form
@@ -78,18 +78,12 @@ Binary :: Field
 -- | Read a binary nutmeg .raw file
 readFile :: FilePath -> IO NutMeg
 
--- | Strict version of <tt><a>readFile</a></tt>
-readFile' :: FilePath -> IO NutMeg
-
--- | Read all <tt><a>Plot</a></tt>s encountered in a ByteString
-slurp :: ByteString -> NutMeg
-
 -- | Read The first plot encountered in ByteString String: <tt>((Plotname,
 --   <a>Plot</a>), Remianing ByteString)</tt>
-extractPlot :: ByteString -> ((String, Plot), ByteString)
+extractPlots :: ByteString -> NutMeg
 
 -- | Extract the wave forms from binary data given header information
-extractPlot' :: Flag -> Int -> Int -> ByteString -> [Wave]
+extractPlot :: Flag -> Int -> Int -> ByteString -> [Wave]
 
 -- | Extract <tt><a>Plot</a></tt> header information: <tt>((Plotname,
 --   <a>Flag</a>, No. Variables, No. Points), [Variable Names])</tt>
@@ -148,6 +142,7 @@ instance GHC.Enum.Bounded Data.NutMeg.Field
 instance GHC.Classes.Ord Data.NutMeg.Field
 instance GHC.Enum.Enum Data.NutMeg.Field
 instance GHC.Classes.Eq Data.NutMeg.Field
+instance Control.DeepSeq.NFData Data.NutMeg.Flag
 instance GHC.Generics.Generic Data.NutMeg.Flag
 instance GHC.Enum.Bounded Data.NutMeg.Flag
 instance GHC.Classes.Eq Data.NutMeg.Flag
