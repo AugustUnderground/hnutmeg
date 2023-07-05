@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -fno-full-laziness #-}
 
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE BangPatterns #-}
@@ -21,6 +21,7 @@ module Data.NutMeg ( -- * Data Types
                    -- * Utilities
                    , r2c, concat, isReal, isComplex, isReal', isComplex'
                    ) where
+
 
 import           GHC.Generics
 import           Control.DeepSeq
@@ -63,18 +64,18 @@ instance Show Field where
   show Binary      = "Binary:"
 
 -- | Flag indicating whether a plot is real or complex valued
-data Flag = Real    -- ^ Real valued ('Double') plot
-          | Complex -- ^ Complex valued ('Complex Double') plot
+data Flag = Real'    -- ^ Real valued ('Double') plot
+          | Complex' -- ^ Complex valued ('Complex Double') plot
     deriving (Eq, Bounded, Generic, NFData)
 
 instance Read Flag where
-  readsPrec _ "real"    = [(Real, "")]
-  readsPrec _ "complex" = [(Complex, "")]
+  readsPrec _ "real"    = [(Real', "")]
+  readsPrec _ "complex" = [(Complex', "")]
   readsPrec _ _         = undefined
 
 instance Show Flag where
-  show Real    = "real"
-  show Complex = "complex"
+  show Real'    = "real"
+  show Complex' = "complex"
 
 -- | Wrapper around Real or Complex valued Vector, so they can be stored in the
 -- same List.
@@ -168,18 +169,18 @@ flattenPlots' = M.unionsWith concat . map snd
 -- | Concatenate the @'Wave'@s of a given list of @'Plot'@ names. This will
 -- only work if the keys line up.
 flattenPlots :: [String] -> NutMeg -> Plot
-flattenPlots plotNames nut = flattenPlots' $ filter ((`elem` plotNames) . fst) nut
+flattenPlots !plotNames !nut = flattenPlots' $ filter ((`elem` plotNames) . fst) nut
 
 -- | Read a @'NutMeg'@ field from a ByteString
 readField :: Field -> ByteString -> String
-readField nf bs = CL.unpack . BL.dropWhile isSpaceWord8 . fromJust $ BL.stripPrefix nfn bs
+readField !nf !bs = CL.unpack . BL.dropWhile isSpaceWord8 . fromJust $ BL.stripPrefix nfn bs
   where 
     nfn = CL.pack $ show nf
 
 -- | Extract @'Plot'@ header information:
 -- @((Plotname, 'Flag', No. Variables, No. Points), [Variable Names])@
 parseHeader :: [ByteString] -> ((String, Flag, Int, Int),  [String])
-parseHeader hdr = (h, var')
+parseHeader !hdr = (h, var')
   where
     hdr' = zipWith readField [ Plotname .. NoPoints ] hdr
     h    = ( head hdr'
@@ -199,12 +200,12 @@ extractPlot :: Flag       -- ^ Real or Complex Data
              -> Int        -- ^ No. Points
              -> ByteString -- ^ Binary Data
              -> [Wave]     -- ^ Wave forms
-extractPlot Real    numVars numPoints bin = seq wave' waves
+extractPlot Real'    !numVars !numPoints !bin = seq wave' waves
   where
     !wave' = V.generate (numVars * numPoints)
            $ \i -> runGet getDoublebe $ BL.drop (fromIntegral i * bytesPerReal) bin
     !waves = map RealWave $ r2c numVars numPoints wave'
-extractPlot Complex numVars numPoints bin = seq wave' waves
+extractPlot Complex' !numVars !numPoints !bin = seq wave' waves
   where
     !wave' = V.generate (numVars * numPoints)
           $ \i -> let i'   = fromIntegral $ i * 2
@@ -216,20 +217,21 @@ extractPlot Complex numVars numPoints bin = seq wave' waves
 -- | Read The first plot encountered in ByteString String:
 -- @((Plotname, 'Plot'), Remianing ByteString)@
 extractPlots :: ByteString -> NutMeg
-extractPlots bs | BL.isPrefixOf "Plotname:" bs = (plotName, plot) : extractPlots rest
-                | otherwise                    = []
+extractPlots !bs | BL.isPrefixOf "Plotname:" bs = (plotName, plot) : extractPlots rest
+                 | otherwise                    = []
   where
     hdr   = takeWhile (not . BL.isPrefixOf "Binary:") $ CL.lines bs
     ((plotName, flag, numVars, numPoints), varNames) = parseHeader hdr
     n     = (+8) . BL.length $ CL.unlines hdr 
-    b     = if flag == Real then bytesPerReal else 2 * bytesPerReal
+    b     = if flag == Real' then bytesPerReal else 2 * bytesPerReal
     n'    = (b *) . fromIntegral $ numVars * numPoints
     bin   = BL.take n' $ BL.drop n bs
     plot  = M.fromList . zip varNames $! extractPlot flag numVars numPoints bin
     rest  = BL.drop (n + n') bs
+{-# NOINLINE extractPlots #-}
 
 -- | Read a binary nutmeg .raw file
 readFile :: FilePath -> IO NutMeg
-readFile path = do
+readFile !path = do
     !plots <- extractPlots . CL.unlines . drop 2 . CL.lines <$!> BL.readFile path
-    pure . seq plots $ reverse plots
+    pure $! plots

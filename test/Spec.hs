@@ -58,6 +58,7 @@ nmosTest  = do
 
     !tic <- getTime Realtime
     -- !foo <- N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
+    -- print $ length foo
     !nut <- N.readFile "./example/nutmos.raw"
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
@@ -69,6 +70,7 @@ nmosTest  = do
     -- !bar <- traverseConcurrently Par' N.readFile $ [ "/home/uhlmanny/Workspace/TRASH/nut/" ++ (d : "/hspectre.raw") | d <- ['a' .. 'j']]
     -- !bar <- replicateConcurrently Par' n (N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw")
     -- !bar <- replicateM n $ N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
+    -- print $ map length bar
     !toc' <- getTime Realtime
     let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
     putStrLn $ show n  ++ "x : " ++ show td' ++ "s"
