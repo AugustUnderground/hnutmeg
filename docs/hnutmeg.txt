@@ -5,7 +5,7 @@
 -- | Please see the README on GitHub at
 --   <a>https://github.com/augustunderground/hnutmeg#readme</a>
 @package hnutmeg
-@version 0.3.6.0
+@version 0.3.7.0
 
 
 -- | Read Binary NutMeg Data
@@ -80,7 +80,7 @@ readFile :: FilePath -> IO NutMeg
 
 -- | Read The first plot encountered in ByteString String: <tt>((Plotname,
 --   <a>Plot</a>), Remianing ByteString)</tt>
-extractPlots :: ByteString -> NutMeg
+extractPlots :: ByteString -> NutMeg -> NutMeg
 
 -- | Extract the wave forms from binary data given header information
 extractPlot :: Flag -> Int -> Int -> ByteString -> [Wave]
@@ -117,9 +117,6 @@ asRealPlot :: Plot -> RealPlot
 --   with <tt><a>isComplex</a></tt> before using, to be sure
 asComplexPlot :: Plot -> ComplexPlot
 
--- | Transpose Rows / Columns
-r2c :: Unbox a => Int -> Int -> Vector a -> [Vector a]
-
 -- | Joins two <tt><a>Wave</a></tt>s of the same type: <tt>wave1 ++
 --   wave2</tt> Attempting to concatenate a Real and Complex wave will
 --   result in an error
@@ -136,6 +133,13 @@ isReal' :: Wave -> Bool
 
 -- | Check whether waveform is complex valued
 isComplex' :: Wave -> Bool
+
+-- | Swap Bytes of Big-Endian encoded ByteString Thanks Noughtmare:
+--   <a>https://stackoverflow.com/a/71341067</a>
+byteSwap :: ByteString -> ByteString
+
+-- | Swap bytes and cast to vector (slow)
+castByteStringToVector :: Storable a => ByteString -> Vector a
 instance Control.DeepSeq.NFData Data.NutMeg.Field
 instance GHC.Generics.Generic Data.NutMeg.Field
 instance GHC.Enum.Bounded Data.NutMeg.Field

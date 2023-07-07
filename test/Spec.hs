@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -8,32 +7,20 @@ module Main where
 
 import qualified Data.NutMeg                 as N
 
-import           Control.DeepSeq
 import           Control.Monad
-import           Control.Scheduler
 import           System.Clock
-import qualified Data.Binary.Get             as B
-import           Data.Complex
 import           Data.Function                       (on)
 import           Data.Maybe                          (fromJust, mapMaybe)
 import qualified Data.Map                    as M
 import qualified Data.List                   as L
-import qualified Data.Vector.Unboxed         as V
-import qualified Data.ByteString.Lazy        as BL
-import qualified Data.ByteString.Lazy.Char8  as CL
-
-import           Data.ByteString.Internal         (c2w, w2c, isSpaceWord8)
-import GHC.Word
+import qualified Data.Vector.Storable        as V
+import qualified Data.ByteString             as BS
+import qualified Data.ByteString.Char8       as CS
+import           Data.ByteString.Internal            (c2w, w2c, isSpaceWord8, toForeignPtr, unsafePackLenBytes)
+import           Data.ByteString.Unsafe              (unsafeIndex)
 
 import qualified Data.Text                   as T
 import           Graphics.Vega.VegaLite             hiding (sample, shape)
-
-
--- !bs' <- BL.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
--- let bs = CL.unlines . drop 2 $ CL.lines bs'
---     plots = extractPlots bs
--- 
--- !nut <- force <$!!> N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
 
 tranTest :: IO ()
 tranTest = do
@@ -50,30 +37,18 @@ tranTest = do
 
     plotNut "./example/nutbin.html" "time (s)" "O(V)" (zip t o)
 
+
 nmosTest :: IO ()
 nmosTest  = do
     -- !nut <- N.readFile "./example/nutmos.raw"
-    -- !nut <- N.readFile "/tmp/uhlmanny-sym-xt018-5252811c109ec705/hspectre.raw"
-    -- !nut <- N.readFile "/tmp/uhlmanny-sym-xt018-c6f1b33f1fc745e6/hspectre.raw"
 
     !tic <- getTime Realtime
-    -- !foo <- N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
-    -- print $ length foo
     !nut <- N.readFile "./example/nutmos.raw"
+    -- !nut <- N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
+    zipWithM_ (\i f -> print (i , M.size  . snd $ f)) [0 .. ] nut
     !toc <- getTime Realtime
     let !td = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc tic :: Float
     putStrLn $ "1x : " ++ show td ++ "s"
-
-    let n = 10
-    !tic' <- getTime Realtime
-    !nut' <- traverseConcurrently Par' N.readFile $ replicate n "./example/nutmos.raw"
-    -- !bar <- traverseConcurrently Par' N.readFile $ [ "/home/uhlmanny/Workspace/TRASH/nut/" ++ (d : "/hspectre.raw") | d <- ['a' .. 'j']]
-    -- !bar <- replicateConcurrently Par' n (N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw")
-    -- !bar <- replicateM n $ N.readFile "/home/uhlmanny/Workspace/TRASH/nut/hspectre.raw"
-    -- print $ map length bar
-    !toc' <- getTime Realtime
-    let !td' = (*1.0e-9) . realToFrac . toNanoSecs $ diffTimeSpec toc' tic' :: Float
-    putStrLn $ show n  ++ "x : " ++ show td' ++ "s"
 
     let plt    = N.flattenPlots' nut
         vm     = N.asRealPlot plt
